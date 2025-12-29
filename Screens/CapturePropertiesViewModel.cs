@@ -40,6 +40,7 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
     private int _hdrWhitePoint;
     private int _smoothingLevel;
     private int _frameSkip;
+    private bool _isUsingHdrCapture;
 
     private CaptureRegionDisplayViewModel? _captureRegionDisplay;
     private CaptureRegionEditorViewModel? _captureRegionEditor;
@@ -240,6 +241,12 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
         get => _frameSkip;
         set => RaiseAndSetIfChanged(ref _frameSkip, value);
     }
+    
+    public bool IsUsingHdrCapture
+    {
+        get => _isUsingHdrCapture;
+        set => RaiseAndSetIfChanged(ref _isUsingHdrCapture, value);
+    }
 
     public bool EnableValidation
     {
@@ -374,6 +381,9 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
             captureScreenViewModel.Update();
         CaptureRegionEditor?.Update();
         CaptureRegionDisplay?.Update();
+        
+        // Update HDR capture status
+        IsUsingHdrCapture = AmbilightSmoothedLayerBrush.IsUsingHdrCapture;
     }
 
     private void ExecuteResetRegion()

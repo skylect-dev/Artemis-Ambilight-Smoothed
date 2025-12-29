@@ -154,6 +154,27 @@
                                            Kind="HelpCircle"
                                            ToolTip.Tip="Automatically adjusts exposure and tone mapping for washed-out HDR captures to preserve highlight detail." />
                 </Grid>
+                
+                <!-- HDR Capture Status Indicator -->
+                <Border IsVisible="{CompiledBinding IsUsingHdrCapture}"
+                        Background="#20FFD700"
+                        BorderBrush="#FFFFD700"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="8,4"
+                        Margin="0 5 0 0">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <avalonia:MaterialIcon Kind="CheckCircle"
+                                             VerticalAlignment="Center"
+                                             Foreground="#FFFFD700"
+                                             Width="16"
+                                             Height="16" />
+                        <TextBlock Text="HDR Native Capture Active"
+                                 VerticalAlignment="Center"
+                                 Foreground="#FFFFD700"
+                                 FontSize="11" />
+                    </StackPanel>
+                </Border>
 
                 <Grid ColumnDefinitions="*,Auto" Margin="0 10 0 0" IsEnabled="{CompiledBinding Hdr}">
                     <Label Grid.Column="0" Content="Saturation" />

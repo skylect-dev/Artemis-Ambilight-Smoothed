@@ -3,6 +3,7 @@ using System.Linq;
 using Artemis.Core.LayerBrushes;
 using Artemis.Plugins.LayerBrushes.AmbilightSmoothed.PropertyGroups;
 using Artemis.Plugins.LayerBrushes.AmbilightSmoothed.Screens;
+using Artemis.Plugins.LayerBrushes.AmbilightSmoothed.Services;
 using Artemis.UI.Shared.LayerBrushes;
 using HPPH;
 using ScreenCapture.NET;
@@ -16,10 +17,16 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed
 
         private IScreenCaptureService? _screenCaptureService => AmbilightSmoothedBootstrapper.ScreenCaptureService;
         public bool PropertiesOpen { get; set; }
+        
+        public bool IsUsingHdrCapture => _hdrCapture != null;
 
         private Display? _display;
         private ICaptureZone? _captureZone;
         private bool _creatingCaptureZone;
+        
+        // HDR capture (when display supports HDR)
+        private HdrScreenCapture? _hdrCapture;
+        private byte[]? _hdrCaptureBuffer;
 
         // Smoothing state
         private byte[]? _smoothedPixels;
@@ -44,9 +51,116 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed
         {
             _captureZone?.RequestUpdate();
         }
+        
+        private unsafe void RenderWithHdrCapture(SKCanvas canvas, SKRect bounds, SKPaint paint)
+        {
+            if (_hdrCapture == null || _hdrCaptureBuffer == null)
+                return;
+                
+            // Capture frame from HDR capture
+            if (!_hdrCapture.CaptureFrame(_hdrCaptureBuffer))
+                return;
+                
+            AmbilightSmoothedCaptureProperties properties = Properties.Capture;
+            int smoothingLevel = properties.SmoothingLevel.CurrentValue;
+            int frameSkip = properties.FrameSkip.CurrentValue;
+            bool hdrEnabled = properties.Hdr.CurrentValue;
+            bool hdrAuto = properties.HdrAuto.CurrentValue;
+            int hdrExposure = properties.HdrExposure.CurrentValue;
+            int hdrBlackPoint = properties.HdrBlackPoint.CurrentValue;
+            int hdrWhitePoint = properties.HdrWhitePoint.CurrentValue;
+            int hdrSaturation = properties.HdrSaturation.CurrentValue;
+            
+            float smoothingFactor = smoothingLevel == 0 ? 1.0f : (float)Math.Pow((10 - smoothingLevel) / 10.0, 2.0);
+            
+            int width = _hdrCapture.Width;
+            int height = _hdrCapture.Height;
+            int stride = width * 4;
+            
+            // Handle frame skipping
+            _frameCounter++;
+            bool shouldProcess = _frameCounter > frameSkip;
+            if (shouldProcess)
+                _frameCounter = 0;
+                
+            bool hdrSettingsChanged = hdrEnabled && 
+                (_hdrLastBlackPoint != hdrBlackPoint || 
+                 _hdrLastWhitePoint != hdrWhitePoint || 
+                 _hdrLastSaturation != hdrSaturation ||
+                 _hdrLastExposure != hdrExposure ||
+                 _hdrLastAutoEnabled != hdrAuto);
+            if (hdrSettingsChanged)
+                shouldProcess = true;
+                
+            fixed (byte* bufferPtr = _hdrCaptureBuffer)
+            {
+                byte* sourcePixels = bufferPtr;
+                
+                // Apply HDR compensation if enabled
+                if (hdrEnabled && shouldProcess)
+                {
+                    if (_hdrAdjustedPixels == null || _hdrAdjustedPixels.Length != _hdrCaptureBuffer.Length)
+                        _hdrAdjustedPixels = new byte[_hdrCaptureBuffer.Length];
+                        
+                    fixed (byte* hdrAdjusted = _hdrAdjustedPixels)
+                    {
+                        if (hdrAuto)
+                        {
+                            int autoExposure = ComputeAutoExposurePercent(sourcePixels, width, height, stride, hdrBlackPoint, hdrWhitePoint);
+                            EnsureHdrLut(autoExposure, hdrBlackPoint, hdrWhitePoint, hdrSaturation);
+                        }
+                        else
+                        {
+                            EnsureHdrLut(hdrExposure, hdrBlackPoint, hdrWhitePoint, hdrSaturation);
+                        }
+                        
+                        if (_hdrLut != null)
+                        {
+                            ApplyHdrCompensation(sourcePixels, hdrAdjusted, width, height, stride, _hdrLut, hdrSaturation);
+                            sourcePixels = hdrAdjusted;
+                        }
+                    }
+                }
+                else if (hdrEnabled && _hdrAdjustedPixels != null)
+                {
+                    fixed (byte* hdrAdjusted = _hdrAdjustedPixels)
+                    {
+                        sourcePixels = hdrAdjusted;
+                    }
+                }
+                
+                // Apply smoothing
+                if (smoothingLevel > 0)
+                {
+                    if (shouldProcess)
+                        ApplySmoothing(sourcePixels, width, height, stride, smoothingFactor);
+                        
+                    if (_smoothedPixels != null)
+                    {
+                        fixed (byte* smoothed = _smoothedPixels)
+                        {
+                            sourcePixels = smoothed;
+                        }
+                    }
+                }
+                
+                // Draw to canvas
+                using SKBitmap bitmap = new SKBitmap(width, height, SKColorType.Bgra8888, SKAlphaType.Premul);
+                IntPtr pixelsAddr = bitmap.GetPixels();
+                Buffer.MemoryCopy(sourcePixels, (void*)pixelsAddr, width * height * 4, width * height * 4);
+                canvas.DrawBitmap(bitmap, bounds, paint);
+            }
+        }
 
         public override unsafe void Render(SKCanvas canvas, SKRect bounds, SKPaint paint)
         {
+            // Handle HDR capture path
+            if (_hdrCapture != null)
+            {
+                RenderWithHdrCapture(canvas, bounds, paint);
+                return;
+            }
+            
             if (_captureZone == null) return;
 
             AmbilightSmoothedCaptureProperties properties = Properties.Capture;
@@ -420,10 +534,45 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed
                 int y = Math.Min(_display.Value.Height - height, props.Y);
                 _captureZone = _screenCaptureService.GetScreenCapture(_display.Value).RegisterCaptureZone(x, y, width, height, props.DownscaleLevel);
                 _captureZone.AutoUpdate = false; //TODO DarthAffe 09.04.2021: config?
+                
+                // Try to use HDR capture if display supports it
+                TryInitializeHdrCapture();
             }
             finally
             {
                 _creatingCaptureZone = false;
+            }
+        }
+        
+        private void TryInitializeHdrCapture()
+        {
+            if (_display == null)
+                return;
+                
+            try
+            {
+                HdrScreenCapture hdrCapture = new HdrScreenCapture(_display.Value);
+                if (hdrCapture.Initialize() && hdrCapture.IsHdr)
+                {
+                    // Successfully initialized HDR capture
+                    _hdrCapture = hdrCapture;
+                    _hdrCaptureBuffer = new byte[hdrCapture.Width * hdrCapture.Height * 4];
+                    
+                    // Remove the ScreenCapture.NET capture zone since we're using HDR capture
+                    RemoveCaptureZone();
+                    _display = _display.Value; // Keep display reference
+                }
+                else
+                {
+                    // Not HDR or failed to initialize, dispose and fall back to ScreenCapture.NET
+                    hdrCapture.Dispose();
+                }
+            }
+            catch
+            {
+                // Failed to initialize HDR capture, fall back to ScreenCapture.NET
+                _hdrCapture?.Dispose();
+                _hdrCapture = null;
             }
         }
 
@@ -432,12 +581,19 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed
             if ((_display != null) && (_captureZone != null) && (_screenCaptureService != null))
                 _screenCaptureService.GetScreenCapture(_display.Value).UnregisterCaptureZone(_captureZone);
             _captureZone = null;
-            _display = null;
+            
+            // Don't null _display if we're using HDR capture
+            if (_hdrCapture == null)
+                _display = null;
         }
 
         public override void DisableLayerBrush()
         {
             RemoveCaptureZone();
+            _hdrCapture?.Dispose();
+            _hdrCapture = null;
+            _hdrCaptureBuffer = null;
+            _display = null;
             _smoothedPixels = null;
             _hdrAdjustedPixels = null;
             _hdrLut = null;
