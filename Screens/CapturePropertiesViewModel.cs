@@ -371,19 +371,19 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
 
     private void ExecuteResetHdrBlackPoint()
     {
-        HdrBlackPoint = 30;
+        HdrBlackPoint = 20;
         Save();
     }
 
     private void ExecuteResetHdrWhitePoint()
     {
-        HdrWhitePoint = 235;
+        HdrWhitePoint = 245;
         Save();
     }
 
     private void ExecuteResetHdrSaturation()
     {
-        HdrSaturation = 120;
+        HdrSaturation = 105;
         Save();
     }
 
