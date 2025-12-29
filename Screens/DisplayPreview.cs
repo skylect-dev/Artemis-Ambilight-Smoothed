@@ -51,6 +51,9 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
         Display = display;
 
         _captureZone = AmbilightSmoothedBootstrapper.ScreenCaptureService!.GetScreenCapture(display).RegisterCaptureZone(0, 0, display.Width, display.Height, highQuality ? 0 : 2);
+        if (_captureZone == null)
+            throw new InvalidOperationException("Failed to register capture zone for display preview");
+        
         Preview = new WriteableBitmap(new PixelSize(_captureZone.Width, _captureZone.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
     }
 
@@ -71,6 +74,9 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
             BuildHdrLut(_hdrBlackPoint, _hdrWhitePoint);
 
         _captureZone = AmbilightSmoothedBootstrapper.ScreenCaptureService!.GetScreenCapture(display).RegisterCaptureZone(0, 0, display.Width, display.Height);
+        if (_captureZone == null)
+            throw new InvalidOperationException("Failed to register capture zone for display preview");
+        
         Preview = new WriteableBitmap(new PixelSize(_captureZone.Width, _captureZone.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
 
         if (((properties.X + properties.Width) <= display.Width) && ((properties.Y + properties.Height) <= display.Height))
@@ -123,6 +129,10 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
             }
             else if (ProcessedPreview != null)
             {
+                // Ensure ProcessedPreview matches processedImage dimensions
+                if ((Math.Abs(ProcessedPreview.Size.Width - processedImage.Width) > 0.001) || (Math.Abs(ProcessedPreview.Size.Height - processedImage.Height) > 0.001))
+                    ProcessedPreview = new WriteableBitmap(new PixelSize(processedImage.Width, processedImage.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
+                
                 if (_hdr)
                     WritePixelsWithHdr(ProcessedPreview, processedImage);
                 else
