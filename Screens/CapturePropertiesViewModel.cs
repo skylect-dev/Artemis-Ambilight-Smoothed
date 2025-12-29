@@ -60,6 +60,11 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
         AmbilightSmoothedLayerBrush = layerBrush;
         CaptureScreens = new ObservableCollection<CaptureScreenViewModel>();
         ResetRegion = ReactiveCommand.Create(ExecuteResetRegion);
+        ResetHdrBlackPoint = ReactiveCommand.Create(ExecuteResetHdrBlackPoint);
+        ResetHdrWhitePoint = ReactiveCommand.Create(ExecuteResetHdrWhitePoint);
+        ResetHdrSaturation = ReactiveCommand.Create(ExecuteResetHdrSaturation);
+        ResetSmoothingLevel = ReactiveCommand.Create(ExecuteResetSmoothingLevel);
+        ResetFrameSkip = ReactiveCommand.Create(ExecuteResetFrameSkip);
 
         _maxX = this.WhenAnyValue(vm => vm.Width, vm => vm.SelectedCaptureScreen, (width, screen) => (screen?.Display.Width ?? 0) - width).ToProperty(this, vm => vm.MaxX);
         _maxY = this.WhenAnyValue(vm => vm.Height, vm => vm.SelectedCaptureScreen, (height, screen) => (screen?.Display.Height ?? 0) - height).ToProperty(this, vm => vm.MaxY);
@@ -106,6 +111,11 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
     }
 
     public ReactiveCommand<Unit, Unit> ResetRegion { get; }
+    public ReactiveCommand<Unit, Unit> ResetHdrBlackPoint { get; }
+    public ReactiveCommand<Unit, Unit> ResetHdrWhitePoint { get; }
+    public ReactiveCommand<Unit, Unit> ResetHdrSaturation { get; }
+    public ReactiveCommand<Unit, Unit> ResetSmoothingLevel { get; }
+    public ReactiveCommand<Unit, Unit> ResetFrameSkip { get; }
 
     public int X
     {
@@ -356,6 +366,36 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
         Width = SelectedCaptureScreen.Display.Width;
         Height = SelectedCaptureScreen.Display.Height;
 
+        Save();
+    }
+
+    private void ExecuteResetHdrBlackPoint()
+    {
+        HdrBlackPoint = 30;
+        Save();
+    }
+
+    private void ExecuteResetHdrWhitePoint()
+    {
+        HdrWhitePoint = 235;
+        Save();
+    }
+
+    private void ExecuteResetHdrSaturation()
+    {
+        HdrSaturation = 120;
+        Save();
+    }
+
+    private void ExecuteResetSmoothingLevel()
+    {
+        SmoothingLevel = 6;
+        Save();
+    }
+
+    private void ExecuteResetFrameSkip()
+    {
+        FrameSkip = 0;
         Save();
     }
 

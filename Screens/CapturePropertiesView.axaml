@@ -155,7 +155,15 @@
                                            ToolTip.Tip="Applies SDR compensation for washed-out HDR captures (levels + saturation)." />
                 </Grid>
 
-                <Label Content="Black point" Margin="0 10 0 0" IsEnabled="{CompiledBinding Hdr}" />
+                <Grid ColumnDefinitions="*,Auto" Margin="0 10 0 0" IsEnabled="{CompiledBinding Hdr}">
+                    <Label Grid.Column="0" Content="Black point" />
+                    <Button Grid.Column="1"
+                            Classes="AppBarButton icon-button"
+                            ToolTip.Tip="Reset to default (30)"
+                            Command="{CompiledBinding ResetHdrBlackPoint}">
+                        <avalonia:MaterialIcon Kind="Restore" Width="16" Height="16" />
+                    </Button>
+                </Grid>
                 <Grid ColumnDefinitions="Auto,*" IsEnabled="{CompiledBinding Hdr}">
                     <controls:NumberBox Grid.Column="0" Value="{CompiledBinding HdrBlackPoint}" Margin="0 0 5 0" VerticalAlignment="Center" Minimum="0" Maximum="255" />
                     <Slider Grid.Column="1"
@@ -167,7 +175,15 @@
                             PointerCaptureLost="PointerInputFinished" />
                 </Grid>
 
-                <Label Content="White point" Margin="0 10 0 0" IsEnabled="{CompiledBinding Hdr}" />
+                <Grid ColumnDefinitions="*,Auto" Margin="0 10 0 0" IsEnabled="{CompiledBinding Hdr}">
+                    <Label Grid.Column="0" Content="White point" />
+                    <Button Grid.Column="1"
+                            Classes="AppBarButton icon-button"
+                            ToolTip.Tip="Reset to default (235)"
+                            Command="{CompiledBinding ResetHdrWhitePoint}">
+                        <avalonia:MaterialIcon Kind="Restore" Width="16" Height="16" />
+                    </Button>
+                </Grid>
                 <Grid ColumnDefinitions="Auto,*" IsEnabled="{CompiledBinding Hdr}">
                     <controls:NumberBox Grid.Column="0" Value="{CompiledBinding HdrWhitePoint}" Margin="0 0 5 0" VerticalAlignment="Center" Minimum="0" Maximum="255" />
                     <Slider Grid.Column="1"
@@ -179,7 +195,15 @@
                             PointerCaptureLost="PointerInputFinished" />
                 </Grid>
 
-                <Label Content="Saturation" Margin="0 10 0 0" IsEnabled="{CompiledBinding Hdr}" />
+                <Grid ColumnDefinitions="*,Auto" Margin="0 10 0 0" IsEnabled="{CompiledBinding Hdr}">
+                    <Label Grid.Column="0" Content="Saturation" />
+                    <Button Grid.Column="1"
+                            Classes="AppBarButton icon-button"
+                            ToolTip.Tip="Reset to default (120%)"
+                            Command="{CompiledBinding ResetHdrSaturation}">
+                        <avalonia:MaterialIcon Kind="Restore" Width="16" Height="16" />
+                    </Button>
+                </Grid>
                 <Grid ColumnDefinitions="Auto,*" IsEnabled="{CompiledBinding Hdr}">
                     <controls:NumberBox Grid.Column="0" Value="{CompiledBinding HdrSaturation}" Margin="0 0 5 0" VerticalAlignment="Center" Minimum="50" Maximum="200" />
                     <Slider Grid.Column="1"
@@ -196,9 +220,16 @@
 
                 <Separator Margin="0 15 0 0" />
 
-                <Grid ColumnDefinitions="*,Auto" Margin="0 10 0 0">
+                <Grid ColumnDefinitions="*,Auto,Auto" Margin="0 10 0 0">
                     <Label Grid.Column="0" Content="Smoothing Level" Margin="0" />
-                    <avalonia:MaterialIcon Grid.Column="1"
+                    <Button Grid.Column="1"
+                            Classes="AppBarButton icon-button"
+                            ToolTip.Tip="Reset to default (6)"
+                            Command="{CompiledBinding ResetSmoothingLevel}"
+                            Margin="0 0 5 0">
+                        <avalonia:MaterialIcon Kind="Restore" Width="16" Height="16" />
+                    </Button>
+                    <avalonia:MaterialIcon Grid.Column="2"
                                            VerticalAlignment="Center"
                                            Kind="HelpCircle"
                                            ToolTip.Tip="Controls color smoothing intensity. 0 = no smoothing, 10 = maximum smoothing" />
@@ -217,7 +248,15 @@
                     0 = No smoothing (instant, jittery), 10 = Maximum smoothing (very smooth, slower response)
                 </TextBlock>
 
-                <Label Content="Frame Skip" Margin="0 10 0 0" />
+                <Grid ColumnDefinitions="*,Auto" Margin="0 10 0 0">
+                    <Label Grid.Column="0" Content="Frame Skip" />
+                    <Button Grid.Column="1"
+                            Classes="AppBarButton icon-button"
+                            ToolTip.Tip="Reset to default (0)"
+                            Command="{CompiledBinding ResetFrameSkip}">
+                        <avalonia:MaterialIcon Kind="Restore" Width="16" Height="16" />
+                    </Button>
+                </Grid>
                 <Grid ColumnDefinitions="Auto,*">
                     <controls:NumberBox Grid.Column="0" Value="{CompiledBinding FrameSkip}" Margin="0 0 5 0" VerticalAlignment="Center" Minimum="0" Maximum="10" />
                     <Slider Grid.Column="1"
