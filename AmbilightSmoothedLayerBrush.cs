@@ -91,9 +91,12 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed
 
                     // Apply HDR compensation (levels + saturation) into a reusable buffer.
                     // We only recompute when shouldProcess=true, so FrameSkip reduces CPU cost.
+                    // But we MUST recompute if dimensions changed (e.g., black bar detection).
+                    bool dimensionsChanged = (image.Width != _lastWidth || image.Height != _lastHeight);
+                    
                     if (hdrEnabled)
                     {
-                        if (shouldProcess)
+                        if (shouldProcess || dimensionsChanged)
                         {
                             EnsureHdrLut(hdrBlackPoint, hdrWhitePoint, hdrSaturation);
                             EnsureHdrBuffer(image.Width, image.Height, image.RawStride);
@@ -114,7 +117,7 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed
 
                     // Apply smoothing if enabled (factor < 1.0) and should process this frame
                     bool usesSmoothing = smoothingFactor < 1.0f;
-                    if (usesSmoothing && shouldProcess)
+                    if (usesSmoothing && (shouldProcess || dimensionsChanged))
                     {
                         ApplySmoothing(sourcePixels, image.Width, image.Height, image.RawStride, smoothingFactor);
                     }

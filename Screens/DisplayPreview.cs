@@ -23,6 +23,13 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
     private readonly bool _blackBarDetectionBottom;
     private readonly bool _blackBarDetectionLeft;
     private readonly bool _blackBarDetectionRight;
+    
+    private readonly bool _hdr;
+    private readonly int _hdrBlackPoint;
+    private readonly int _hdrWhitePoint;
+    private readonly int _hdrSaturation;
+    private byte[]? _hdrLut;
+    private byte[]? _hdrBuffer;
 
     public Display Display { get; }
 
@@ -54,6 +61,14 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
         _blackBarDetectionTop = properties.BlackBarDetectionTop;
         _blackBarDetectionLeft = properties.BlackBarDetectionLeft;
         _blackBarDetectionRight = properties.BlackBarDetectionRight;
+        
+        _hdr = properties.Hdr;
+        _hdrBlackPoint = properties.HdrBlackPoint;
+        _hdrWhitePoint = properties.HdrWhitePoint;
+        _hdrSaturation = properties.HdrSaturation;
+        
+        if (_hdr)
+            BuildHdrLut(_hdrBlackPoint, _hdrWhitePoint);
 
         _captureZone = AmbilightSmoothedBootstrapper.ScreenCaptureService!.GetScreenCapture(display).RegisterCaptureZone(0, 0, display.Width, display.Height);
         Preview = new WriteableBitmap(new PixelSize(_captureZone.Width, _captureZone.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
@@ -97,12 +112,91 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
                 if ((ProcessedPreview == null) || (Math.Abs(ProcessedPreview.Size.Width - croppedImage.Width) > 0.001) || (Math.Abs(ProcessedPreview.Size.Height - croppedImage.Height) > 0.001))
                     ProcessedPreview = new WriteableBitmap(new PixelSize(croppedImage.Width, croppedImage.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
 
-                WritePixels(ProcessedPreview, croppedImage);
+                if (_hdr)
+                    WritePixelsWithHdr(ProcessedPreview, croppedImage);
+                else
+                    WritePixels(ProcessedPreview, croppedImage);
             }
             else if (ProcessedPreview != null)
             {
-                WritePixels(ProcessedPreview, processedImage);
+                if (_hdr)
+                    WritePixelsWithHdr(ProcessedPreview, processedImage);
+                else
+                    WritePixels(ProcessedPreview, processedImage);
             }
+        }
+    }
+
+    private void BuildHdrLut(int blackPoint, int whitePoint)
+    {
+        blackPoint = Math.Clamp(blackPoint, 0, 255);
+        whitePoint = Math.Clamp(whitePoint, 0, 255);
+        if (whitePoint <= blackPoint)
+            whitePoint = Math.Min(255, blackPoint + 1);
+
+        _hdrLut = new byte[256];
+        for (int i = 0; i < 256; i++)
+        {
+            int v;
+            if (i <= blackPoint)
+                v = 0;
+            else if (i >= whitePoint)
+                v = 255;
+            else
+                v = (i - blackPoint) * 255 / (whitePoint - blackPoint);
+
+            _hdrLut[i] = (byte)v;
+        }
+    }
+
+    private unsafe void WritePixelsWithHdr(WriteableBitmap preview, RefImage<ColorBGRA> image)
+    {
+        if (_hdrLut == null) return;
+
+        int bufferSize = image.Height * image.RawStride;
+        if (_hdrBuffer == null || _hdrBuffer.Length != bufferSize)
+            _hdrBuffer = new byte[bufferSize];
+
+        fixed (byte* src = image)
+        fixed (byte* dst = _hdrBuffer)
+        fixed (byte* lutPtr = _hdrLut)
+        {
+            int sat = Math.Clamp(_hdrSaturation, 0, 400);
+            for (int y = 0; y < image.Height; y++)
+            {
+                byte* srcRow = src + (y * image.RawStride);
+                byte* dstRow = dst + (y * image.RawStride);
+                for (int x = 0; x < image.Width; x++)
+                {
+                    int i = x * 4;
+                    byte b = lutPtr[srcRow[i + 0]];
+                    byte g = lutPtr[srcRow[i + 1]];
+                    byte r = lutPtr[srcRow[i + 2]];
+                    byte a = srcRow[i + 3];
+
+                    if (sat != 100)
+                    {
+                        int l = (r * 77 + g * 150 + b * 29) >> 8;
+                        int rr = l + ((r - l) * sat) / 100;
+                        int gg = l + ((g - l) * sat) / 100;
+                        int bb = l + ((b - l) * sat) / 100;
+                        r = (byte)Math.Clamp(rr, 0, 255);
+                        g = (byte)Math.Clamp(gg, 0, 255);
+                        b = (byte)Math.Clamp(bb, 0, 255);
+                    }
+
+                    dstRow[i + 0] = b;
+                    dstRow[i + 1] = g;
+                    dstRow[i + 2] = r;
+                    dstRow[i + 3] = a;
+                }
+            }
+        }
+
+        using ILockedFramebuffer framebuffer = preview.Lock();
+        fixed (byte* buf = _hdrBuffer)
+        {
+            Buffer.MemoryCopy(buf, (void*)framebuffer.Address, bufferSize, bufferSize);
         }
     }
 
