@@ -29,7 +29,6 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
     private readonly int _hdrWhitePoint;
     private readonly int _hdrSaturation;
     private byte[]? _hdrLut;
-    private byte[]? _hdrBuffer;
 
     public Display Display { get; }
 
@@ -51,8 +50,7 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
         Display = display;
 
         _captureZone = AmbilightSmoothedBootstrapper.ScreenCaptureService!.GetScreenCapture(display).RegisterCaptureZone(0, 0, display.Width, display.Height, highQuality ? 0 : 2);
-        if (_captureZone != null)
-            Preview = new WriteableBitmap(new PixelSize(_captureZone.Width, _captureZone.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
+        Preview = new WriteableBitmap(new PixelSize(_captureZone.Width, _captureZone.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
     }
 
     public DisplayPreview(Display display, AmbilightSmoothedCaptureProperties properties)
@@ -72,8 +70,7 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
             BuildHdrLut(_hdrBlackPoint, _hdrWhitePoint);
 
         _captureZone = AmbilightSmoothedBootstrapper.ScreenCaptureService!.GetScreenCapture(display).RegisterCaptureZone(0, 0, display.Width, display.Height);
-        if (_captureZone != null)
-            Preview = new WriteableBitmap(new PixelSize(_captureZone.Width, _captureZone.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
+        Preview = new WriteableBitmap(new PixelSize(_captureZone.Width, _captureZone.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
 
         if (((properties.X + properties.Width) <= display.Width) && ((properties.Y + properties.Height) <= display.Height))
         {
@@ -92,64 +89,40 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
     public void Update()
     {
         if (_isDisposed) return;
-        if (_captureZone == null || Preview == null) return;
 
         // DarthAffe 11.09.2023: Accessing the low-level images is a source of potential errors in the future since we assume the pixel-format. Currently both used providers are BGRA, but if there are ever issues with shifted colors, this is the place to start investigating.
 
-        try
-        {
-            using (_captureZone.Lock())
-                WritePixels(Preview, _captureZone.GetRefImage<ColorBGRA>());
-        }
-        catch
-        {
-            // Ignore capture errors to prevent crashes
-            return;
-        }
+        using (_captureZone.Lock())
+            WritePixels(Preview, _captureZone.GetRefImage<ColorBGRA>());
 
         if (_processedCaptureZone == null)
             return;
 
-        try
+        using (_processedCaptureZone.Lock())
         {
-            using (_processedCaptureZone.Lock())
+            if (_processedCaptureZone.RawBuffer.Length == 0)
+                return;
+
+            RefImage<ColorBGRA> processedImage = _processedCaptureZone.GetRefImage<ColorBGRA>();
+            if (_blackBarDetectionTop || _blackBarDetectionBottom || _blackBarDetectionLeft || _blackBarDetectionRight)
             {
-                if (_processedCaptureZone.RawBuffer.Length == 0)
-                    return;
+                RefImage<ColorBGRA> croppedImage = processedImage.RemoveBlackBars(_blackBarThreshold, _blackBarDetectionTop, _blackBarDetectionBottom, _blackBarDetectionLeft, _blackBarDetectionRight);
 
-                RefImage<ColorBGRA> processedImage = _processedCaptureZone.GetRefImage<ColorBGRA>();
-                if (_blackBarDetectionTop || _blackBarDetectionBottom || _blackBarDetectionLeft || _blackBarDetectionRight)
-                {
-                    RefImage<ColorBGRA> croppedImage = processedImage.RemoveBlackBars(_blackBarThreshold, _blackBarDetectionTop, _blackBarDetectionBottom, _blackBarDetectionLeft, _blackBarDetectionRight);
+                if ((ProcessedPreview == null) || (Math.Abs(ProcessedPreview.Size.Width - croppedImage.Width) > 0.001) || (Math.Abs(ProcessedPreview.Size.Height - croppedImage.Height) > 0.001))
+                    ProcessedPreview = new WriteableBitmap(new PixelSize(croppedImage.Width, croppedImage.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
 
-                    // If black bar detection resulted in invalid dimensions, skip this frame
-                    if (croppedImage.Width <= 0 || croppedImage.Height <= 0)
-                        return;
-
-                    if ((ProcessedPreview == null) || (Math.Abs(ProcessedPreview.Size.Width - croppedImage.Width) > 0.001) || (Math.Abs(ProcessedPreview.Size.Height - croppedImage.Height) > 0.001))
-                        ProcessedPreview = new WriteableBitmap(new PixelSize(croppedImage.Width, croppedImage.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
-
-                    if (_hdr)
-                        WritePixelsWithHdr(ProcessedPreview, croppedImage);
-                    else
-                        WritePixels(ProcessedPreview, croppedImage);
-                }
-                else if (ProcessedPreview != null)
-                {
-                    // Ensure ProcessedPreview matches processedImage dimensions
-                    if ((Math.Abs(ProcessedPreview.Size.Width - processedImage.Width) > 0.001) || (Math.Abs(ProcessedPreview.Size.Height - processedImage.Height) > 0.001))
-                        ProcessedPreview = new WriteableBitmap(new PixelSize(processedImage.Width, processedImage.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
-                    
-                    if (_hdr)
-                        WritePixelsWithHdr(ProcessedPreview, processedImage);
-                    else
-                        WritePixels(ProcessedPreview, processedImage);
-                }
+                if (_hdr)
+                    WritePixelsWithHdr(ProcessedPreview, croppedImage);
+                else
+                    WritePixels(ProcessedPreview, croppedImage);
             }
-        }
-        catch
-        {
-            // Ignore capture errors to prevent crashes
+            else if (ProcessedPreview != null)
+            {
+                if (_hdr)
+                    WritePixelsWithHdr(ProcessedPreview, processedImage);
+                else
+                    WritePixels(ProcessedPreview, processedImage);
+            }
         }
     }
 
@@ -178,38 +151,27 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
     private unsafe void WritePixelsWithHdr(WriteableBitmap preview, RefImage<ColorBGRA> image)
     {
         if (_hdrLut == null) return;
+
+        using ILockedFramebuffer framebuffer = preview.Lock();
         
-        // Guard against invalid image dimensions
-        if (image.Width <= 0 || image.Height <= 0 || image.RawStride <= 0)
-            return;
-            
-        // Ensure image dimensions match the preview bitmap
-        if (preview.PixelSize.Width != image.Width || preview.PixelSize.Height != image.Height)
-            return;
-
-        int bufferSize = image.Height * image.RawStride;
-        if (bufferSize <= 0)
-            return;
-            
-        if (_hdrBuffer == null || _hdrBuffer.Length != bufferSize)
-            _hdrBuffer = new byte[bufferSize];
-
         fixed (byte* src = image)
-        fixed (byte* dst = _hdrBuffer)
         fixed (byte* lutPtr = _hdrLut)
         {
+            byte* dst = (byte*)framebuffer.Address;
             int sat = Math.Clamp(_hdrSaturation, 0, 400);
+            int rowBytes = image.Width * 4; // Actual pixel data per row
+            
             for (int y = 0; y < image.Height; y++)
             {
                 byte* srcRow = src + (y * image.RawStride);
-                byte* dstRow = dst + (y * image.RawStride);
-                for (int x = 0; x < image.Width; x++)
+                byte* dstRow = dst + (y * framebuffer.RowBytes);
+                
+                for (int x = 0; x < rowBytes; x += 4)
                 {
-                    int i = x * 4;
-                    byte b = lutPtr[srcRow[i + 0]];
-                    byte g = lutPtr[srcRow[i + 1]];
-                    byte r = lutPtr[srcRow[i + 2]];
-                    byte a = srcRow[i + 3];
+                    byte b = lutPtr[srcRow[x + 0]];
+                    byte g = lutPtr[srcRow[x + 1]];
+                    byte r = lutPtr[srcRow[x + 2]];
+                    byte a = srcRow[x + 3];
 
                     if (sat != 100)
                     {
@@ -222,31 +184,17 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
                         b = (byte)Math.Clamp(bb, 0, 255);
                     }
 
-                    dstRow[i + 0] = b;
-                    dstRow[i + 1] = g;
-                    dstRow[i + 2] = r;
-                    dstRow[i + 3] = a;
+                    dstRow[x + 0] = b;
+                    dstRow[x + 1] = g;
+                    dstRow[x + 2] = r;
+                    dstRow[x + 3] = a;
                 }
             }
-        }
-
-        using ILockedFramebuffer framebuffer = preview.Lock();
-        fixed (byte* buf = _hdrBuffer)
-        {
-            Buffer.MemoryCopy(buf, (void*)framebuffer.Address, bufferSize, bufferSize);
         }
     }
 
     private static unsafe void WritePixels(WriteableBitmap preview, RefImage<ColorBGRA> image)
     {
-        // Guard against invalid image dimensions
-        if (image.Width <= 0 || image.Height <= 0)
-            return;
-            
-        // Ensure image dimensions match the preview bitmap
-        if (preview.PixelSize.Width != image.Width || preview.PixelSize.Height != image.Height)
-            return;
-            
         using ILockedFramebuffer framebuffer = preview.Lock();
         image.CopyTo(new Span<ColorBGRA>((void*)framebuffer.Address, framebuffer.Size.Width * framebuffer.Size.Height));
     }
