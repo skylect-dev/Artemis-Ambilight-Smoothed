@@ -109,6 +109,10 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
             {
                 RefImage<ColorBGRA> croppedImage = processedImage.RemoveBlackBars(_blackBarThreshold, _blackBarDetectionTop, _blackBarDetectionBottom, _blackBarDetectionLeft, _blackBarDetectionRight);
 
+                // If black bar detection resulted in invalid dimensions, skip this frame
+                if (croppedImage.Width <= 0 || croppedImage.Height <= 0)
+                    return;
+
                 if ((ProcessedPreview == null) || (Math.Abs(ProcessedPreview.Size.Width - croppedImage.Width) > 0.001) || (Math.Abs(ProcessedPreview.Size.Height - croppedImage.Height) > 0.001))
                     ProcessedPreview = new WriteableBitmap(new PixelSize(croppedImage.Width, croppedImage.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
 
