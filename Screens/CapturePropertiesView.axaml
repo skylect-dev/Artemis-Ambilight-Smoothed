@@ -171,7 +171,7 @@
                             TickFrequency="10"
                             TickPlacement="BottomRight"
                             Value="{CompiledBinding HdrBlackPoint}"
-                            ToolTip.Tip="Crush blacks: values below this become pure black (0-255)"
+                            ToolTip.Tip="Output floor: minimum brightness level (higher = brighter blacks)"
                             PointerCaptureLost="PointerInputFinished" />
                 </Grid>
 
@@ -179,7 +179,7 @@
                     <Label Grid.Column="0" Content="White point" />
                     <Button Grid.Column="1"
                             Classes="AppBarButton icon-button"
-                            ToolTip.Tip="Reset to default (245)"
+                            ToolTip.Tip="Reset to default (200)"
                             Command="{CompiledBinding ResetHdrWhitePoint}">
                         <avalonia:MaterialIcon Kind="Restore" Width="16" Height="16" />
                     </Button>
@@ -191,7 +191,7 @@
                             TickFrequency="10"
                             TickPlacement="BottomRight"
                             Value="{CompiledBinding HdrWhitePoint}"
-                            ToolTip.Tip="Compress highlights: values above this become pure white - LOWER for HDR (0-255)"
+                            ToolTip.Tip="Output ceiling: maximum brightness level (lower = darker highlights for HDR)"
                             PointerCaptureLost="PointerInputFinished" />
                 </Grid>
 
