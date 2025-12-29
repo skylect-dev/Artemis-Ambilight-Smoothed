@@ -245,12 +245,19 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed
             }
 
             // Apply exponential moving average: output = current * factor + previous * (1 - factor)
+            // IMPORTANT: Must iterate row-by-row using stride, not linearly, because stride includes padding
             fixed (byte* smoothed = _smoothedPixels)
             {
-                int pixelCount = width * height * 4; // 4 bytes per BGRA pixel
-                for (int i = 0; i < pixelCount; i++)
+                int rowBytes = width * 4; // 4 bytes per BGRA pixel
+                for (int y = 0; y < height; y++)
                 {
-                    smoothed[i] = (byte)(currentPixels[i] * factor + smoothed[i] * (1f - factor));
+                    byte* currentRow = currentPixels + (y * stride);
+                    byte* smoothedRow = smoothed + (y * stride);
+                    
+                    for (int x = 0; x < rowBytes; x++)
+                    {
+                        smoothedRow[x] = (byte)(currentRow[x] * factor + smoothedRow[x] * (1f - factor));
+                    }
                 }
             }
         }
