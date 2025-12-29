@@ -191,7 +191,7 @@
                             TickFrequency="10"
                             TickPlacement="BottomRight"
                             Value="{CompiledBinding HdrBlackPoint}"
-                            ToolTip.Tip="Shadow cutoff (input): raise to crush blacks"
+                            ToolTip.Tip="Output floor: raise to crush blacks"
                             PointerCaptureLost="PointerInputFinished" />
                 </Grid>
 
@@ -211,7 +211,7 @@
                             TickFrequency="10"
                             TickPlacement="BottomRight"
                             Value="{CompiledBinding HdrWhitePoint}"
-                            ToolTip.Tip="Highlight pivot (input): lower to boost/clip highlights, higher to keep detail"
+                            ToolTip.Tip="Output ceiling: lower to darken highlights, higher to keep detail"
                             PointerCaptureLost="PointerInputFinished" />
                 </Grid>
 

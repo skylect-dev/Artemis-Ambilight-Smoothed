@@ -154,23 +154,20 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
         exposurePercent = Math.Clamp(exposurePercent, 1, 400);
 
         _hdrLut = new byte[256];
-        // Filmic/ACES-like curve with exposure; black/white define input window (shadow cutoff / highlight pivot)
+        // Filmic/ACES-like curve with exposure; black/white clamp output (floor/ceiling)
         float exposure = exposurePercent / 100f;
-        float inBlack = blackPoint / 255f;
-        float inWhite = whitePoint / 255f;
-        float invRange = 1f / (inWhite - inBlack);
+        float minOut = blackPoint / 255f;
+        float maxOut = whitePoint / 255f;
         const float a = 2.51f, b = 0.03f, c = 2.43f, d = 0.59f, e = 0.14f;
 
         for (int i = 0; i < 256; i++)
         {
-            float x = (i / 255f - inBlack) * invRange;
-            x = Math.Clamp(x, 0f, 1f);
-
-            x *= exposure;
+            float x = (i / 255f) * exposure;
             float numerator = x * (a * x + b);
             float denominator = x * (c * x + d) + e;
             float y = denominator != 0f ? numerator / denominator : 0f;
             y = Math.Clamp(y, 0f, 1f);
+            y = Math.Clamp(y, minOut, maxOut);
 
             _hdrLut[i] = (byte)Math.Clamp((int)(y * 255f + 0.5f), 0, 255);
         }
