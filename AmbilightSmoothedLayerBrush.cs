@@ -63,7 +63,10 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed
             {
                 // DarthAffe 11.09.2023: Accessing the low-level images is a source of potential errors in the future since we assume the pixel-format. Currently both used providers are BGRA, but if there are ever issues with shifted colors, this is the place to start investigating.
                 RefImage<ColorBGRA> image = _captureZone.GetRefImage<ColorBGRA>();
-                if (properties.BlackBarDetectionTop || properties.BlackBarDetectionBottom || properties.BlackBarDetectionLeft || properties.BlackBarDetectionRight)
+                bool hasBlackBarDetection = properties.BlackBarDetectionTop || properties.BlackBarDetectionBottom || 
+                                            properties.BlackBarDetectionLeft || properties.BlackBarDetectionRight;
+                
+                if (hasBlackBarDetection)
                     image = image.RemoveBlackBars(properties.BlackBarDetectionThreshold,
                                                   properties.BlackBarDetectionTop, properties.BlackBarDetectionBottom,
                                                   properties.BlackBarDetectionLeft, properties.BlackBarDetectionRight);
@@ -73,6 +76,14 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed
                 bool shouldProcess = _frameCounter > frameSkip;
                 if (shouldProcess)
                     _frameCounter = 0;
+
+                // Force reprocessing if HDR settings changed (for live preview updates)
+                bool hdrSettingsChanged = hdrEnabled && 
+                    (_hdrLastBlackPoint != hdrBlackPoint || 
+                     _hdrLastWhitePoint != hdrWhitePoint || 
+                     _hdrLastSaturation != hdrSaturation);
+                if (hdrSettingsChanged)
+                    shouldProcess = true;
 
                 fixed (byte* img = image)
                 {
