@@ -156,8 +156,15 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
     private unsafe void WritePixelsWithHdr(WriteableBitmap preview, RefImage<ColorBGRA> image)
     {
         if (_hdrLut == null) return;
+        
+        // Guard against invalid image dimensions
+        if (image.Width <= 0 || image.Height <= 0 || image.RawStride <= 0)
+            return;
 
         int bufferSize = image.Height * image.RawStride;
+        if (bufferSize <= 0)
+            return;
+            
         if (_hdrBuffer == null || _hdrBuffer.Length != bufferSize)
             _hdrBuffer = new byte[bufferSize];
 
@@ -206,6 +213,10 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
 
     private static unsafe void WritePixels(WriteableBitmap preview, RefImage<ColorBGRA> image)
     {
+        // Guard against invalid image dimensions
+        if (image.Width <= 0 || image.Height <= 0)
+            return;
+            
         using ILockedFramebuffer framebuffer = preview.Lock();
         image.CopyTo(new Span<ColorBGRA>((void*)framebuffer.Address, framebuffer.Size.Width * framebuffer.Size.Height));
     }
