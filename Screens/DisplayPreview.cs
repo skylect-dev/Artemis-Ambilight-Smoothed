@@ -96,48 +96,64 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
     public void Update()
     {
         if (_isDisposed) return;
+        if (_captureZone == null || Preview == null) return;
 
         // DarthAffe 11.09.2023: Accessing the low-level images is a source of potential errors in the future since we assume the pixel-format. Currently both used providers are BGRA, but if there are ever issues with shifted colors, this is the place to start investigating.
 
-        using (_captureZone.Lock())
-            WritePixels(Preview, _captureZone.GetRefImage<ColorBGRA>());
+        try
+        {
+            using (_captureZone.Lock())
+                WritePixels(Preview, _captureZone.GetRefImage<ColorBGRA>());
+        }
+        catch
+        {
+            // Ignore capture errors to prevent crashes
+            return;
+        }
 
         if (_processedCaptureZone == null)
             return;
 
-        using (_processedCaptureZone.Lock())
+        try
         {
-            if (_processedCaptureZone.RawBuffer.Length == 0)
-                return;
-
-            RefImage<ColorBGRA> processedImage = _processedCaptureZone.GetRefImage<ColorBGRA>();
-            if (_blackBarDetectionTop || _blackBarDetectionBottom || _blackBarDetectionLeft || _blackBarDetectionRight)
+            using (_processedCaptureZone.Lock())
             {
-                RefImage<ColorBGRA> croppedImage = processedImage.RemoveBlackBars(_blackBarThreshold, _blackBarDetectionTop, _blackBarDetectionBottom, _blackBarDetectionLeft, _blackBarDetectionRight);
-
-                // If black bar detection resulted in invalid dimensions, skip this frame
-                if (croppedImage.Width <= 0 || croppedImage.Height <= 0)
+                if (_processedCaptureZone.RawBuffer.Length == 0)
                     return;
 
-                if ((ProcessedPreview == null) || (Math.Abs(ProcessedPreview.Size.Width - croppedImage.Width) > 0.001) || (Math.Abs(ProcessedPreview.Size.Height - croppedImage.Height) > 0.001))
-                    ProcessedPreview = new WriteableBitmap(new PixelSize(croppedImage.Width, croppedImage.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
+                RefImage<ColorBGRA> processedImage = _processedCaptureZone.GetRefImage<ColorBGRA>();
+                if (_blackBarDetectionTop || _blackBarDetectionBottom || _blackBarDetectionLeft || _blackBarDetectionRight)
+                {
+                    RefImage<ColorBGRA> croppedImage = processedImage.RemoveBlackBars(_blackBarThreshold, _blackBarDetectionTop, _blackBarDetectionBottom, _blackBarDetectionLeft, _blackBarDetectionRight);
 
-                if (_hdr)
-                    WritePixelsWithHdr(ProcessedPreview, croppedImage);
-                else
-                    WritePixels(ProcessedPreview, croppedImage);
+                    // If black bar detection resulted in invalid dimensions, skip this frame
+                    if (croppedImage.Width <= 0 || croppedImage.Height <= 0)
+                        return;
+
+                    if ((ProcessedPreview == null) || (Math.Abs(ProcessedPreview.Size.Width - croppedImage.Width) > 0.001) || (Math.Abs(ProcessedPreview.Size.Height - croppedImage.Height) > 0.001))
+                        ProcessedPreview = new WriteableBitmap(new PixelSize(croppedImage.Width, croppedImage.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
+
+                    if (_hdr)
+                        WritePixelsWithHdr(ProcessedPreview, croppedImage);
+                    else
+                        WritePixels(ProcessedPreview, croppedImage);
+                }
+                else if (ProcessedPreview != null)
+                {
+                    // Ensure ProcessedPreview matches processedImage dimensions
+                    if ((Math.Abs(ProcessedPreview.Size.Width - processedImage.Width) > 0.001) || (Math.Abs(ProcessedPreview.Size.Height - processedImage.Height) > 0.001))
+                        ProcessedPreview = new WriteableBitmap(new PixelSize(processedImage.Width, processedImage.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
+                    
+                    if (_hdr)
+                        WritePixelsWithHdr(ProcessedPreview, processedImage);
+                    else
+                        WritePixels(ProcessedPreview, processedImage);
+                }
             }
-            else if (ProcessedPreview != null)
-            {
-                // Ensure ProcessedPreview matches processedImage dimensions
-                if ((Math.Abs(ProcessedPreview.Size.Width - processedImage.Width) > 0.001) || (Math.Abs(ProcessedPreview.Size.Height - processedImage.Height) > 0.001))
-                    ProcessedPreview = new WriteableBitmap(new PixelSize(processedImage.Width, processedImage.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
-                
-                if (_hdr)
-                    WritePixelsWithHdr(ProcessedPreview, processedImage);
-                else
-                    WritePixels(ProcessedPreview, processedImage);
-            }
+        }
+        catch
+        {
+            // Ignore capture errors to prevent crashes
         }
     }
 
