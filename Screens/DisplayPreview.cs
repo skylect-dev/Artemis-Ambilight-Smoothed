@@ -150,17 +150,13 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
             whitePoint = Math.Min(255, blackPoint + 1);
 
         _hdrLut = new byte[256];
+        // Compress full 0-255 input range INTO the black/white point range
+        // This brings down bright HDR highlights to more reasonable SDR values
+        int range = whitePoint - blackPoint;
         for (int i = 0; i < 256; i++)
         {
-            int v;
-            if (i <= blackPoint)
-                v = 0;
-            else if (i >= whitePoint)
-                v = 255;
-            else
-                v = (i - blackPoint) * 255 / (whitePoint - blackPoint);
-
-            _hdrLut[i] = (byte)v;
+            int v = blackPoint + (i * range / 255);
+            _hdrLut[i] = (byte)Math.Clamp(v, 0, 255);
         }
     }
 
