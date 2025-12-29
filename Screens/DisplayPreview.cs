@@ -51,10 +51,8 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
         Display = display;
 
         _captureZone = AmbilightSmoothedBootstrapper.ScreenCaptureService!.GetScreenCapture(display).RegisterCaptureZone(0, 0, display.Width, display.Height, highQuality ? 0 : 2);
-        if (_captureZone == null)
-            throw new InvalidOperationException("Failed to register capture zone for display preview");
-        
-        Preview = new WriteableBitmap(new PixelSize(_captureZone.Width, _captureZone.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
+        if (_captureZone != null)
+            Preview = new WriteableBitmap(new PixelSize(_captureZone.Width, _captureZone.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
     }
 
     public DisplayPreview(Display display, AmbilightSmoothedCaptureProperties properties)
@@ -74,10 +72,8 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
             BuildHdrLut(_hdrBlackPoint, _hdrWhitePoint);
 
         _captureZone = AmbilightSmoothedBootstrapper.ScreenCaptureService!.GetScreenCapture(display).RegisterCaptureZone(0, 0, display.Width, display.Height);
-        if (_captureZone == null)
-            throw new InvalidOperationException("Failed to register capture zone for display preview");
-        
-        Preview = new WriteableBitmap(new PixelSize(_captureZone.Width, _captureZone.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
+        if (_captureZone != null)
+            Preview = new WriteableBitmap(new PixelSize(_captureZone.Width, _captureZone.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
 
         if (((properties.X + properties.Width) <= display.Width) && ((properties.Y + properties.Height) <= display.Height))
         {
