@@ -159,7 +159,7 @@
                     <Label Grid.Column="0" Content="Black point" />
                     <Button Grid.Column="1"
                             Classes="AppBarButton icon-button"
-                            ToolTip.Tip="Reset to default (30)"
+                            ToolTip.Tip="Reset to default (20)"
                             Command="{CompiledBinding ResetHdrBlackPoint}">
                         <avalonia:MaterialIcon Kind="Restore" Width="16" Height="16" />
                     </Button>
@@ -167,11 +167,11 @@
                 <Grid ColumnDefinitions="Auto,*" IsEnabled="{CompiledBinding Hdr}">
                     <controls:NumberBox Grid.Column="0" Value="{CompiledBinding HdrBlackPoint}" Margin="0 0 5 0" VerticalAlignment="Center" Minimum="0" Maximum="255" />
                     <Slider Grid.Column="1"
-                            Minimum="0" Maximum="100"
-                            TickFrequency="5"
+                            Minimum="0" Maximum="255"
+                            TickFrequency="10"
                             TickPlacement="BottomRight"
                             Value="{CompiledBinding HdrBlackPoint}"
-                            ToolTip.Tip="Black point (0-255)"
+                            ToolTip.Tip="Crush blacks: values below this become pure black (0-255)"
                             PointerCaptureLost="PointerInputFinished" />
                 </Grid>
 
@@ -179,7 +179,7 @@
                     <Label Grid.Column="0" Content="White point" />
                     <Button Grid.Column="1"
                             Classes="AppBarButton icon-button"
-                            ToolTip.Tip="Reset to default (235)"
+                            ToolTip.Tip="Reset to default (245)"
                             Command="{CompiledBinding ResetHdrWhitePoint}">
                         <avalonia:MaterialIcon Kind="Restore" Width="16" Height="16" />
                     </Button>
@@ -187,11 +187,11 @@
                 <Grid ColumnDefinitions="Auto,*" IsEnabled="{CompiledBinding Hdr}">
                     <controls:NumberBox Grid.Column="0" Value="{CompiledBinding HdrWhitePoint}" Margin="0 0 5 0" VerticalAlignment="Center" Minimum="0" Maximum="255" />
                     <Slider Grid.Column="1"
-                            Minimum="155" Maximum="255"
-                            TickFrequency="5"
+                            Minimum="0" Maximum="255"
+                            TickFrequency="10"
                             TickPlacement="BottomRight"
                             Value="{CompiledBinding HdrWhitePoint}"
-                            ToolTip.Tip="White point (0-255)"
+                            ToolTip.Tip="Compress highlights: values above this become pure white - LOWER for HDR (0-255)"
                             PointerCaptureLost="PointerInputFinished" />
                 </Grid>
 
@@ -199,7 +199,7 @@
                     <Label Grid.Column="0" Content="Saturation" />
                     <Button Grid.Column="1"
                             Classes="AppBarButton icon-button"
-                            ToolTip.Tip="Reset to default (120%)"
+                            ToolTip.Tip="Reset to default (105%)"
                             Command="{CompiledBinding ResetHdrSaturation}">
                         <avalonia:MaterialIcon Kind="Restore" Width="16" Height="16" />
                     </Button>
