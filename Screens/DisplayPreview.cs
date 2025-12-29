@@ -160,6 +160,10 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
         // Guard against invalid image dimensions
         if (image.Width <= 0 || image.Height <= 0 || image.RawStride <= 0)
             return;
+            
+        // Ensure image dimensions match the preview bitmap
+        if (preview.PixelSize.Width != image.Width || preview.PixelSize.Height != image.Height)
+            return;
 
         int bufferSize = image.Height * image.RawStride;
         if (bufferSize <= 0)
@@ -215,6 +219,10 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
     {
         // Guard against invalid image dimensions
         if (image.Width <= 0 || image.Height <= 0)
+            return;
+            
+        // Ensure image dimensions match the preview bitmap
+        if (preview.PixelSize.Width != image.Width || preview.PixelSize.Height != image.Height)
             return;
             
         using ILockedFramebuffer framebuffer = preview.Lock();
