@@ -1,0 +1,261 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             xmlns:attachedProperties="clr-namespace:Artemis.UI.Shared.AttachedProperties;assembly=Artemis.UI.Shared"
+             xmlns:controls="clr-namespace:FluentAvalonia.UI.Controls;assembly=FluentAvalonia"
+             xmlns:screens="clr-namespace:Artemis.Plugins.LayerBrushes.AmbilightSmoothed.Screens"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="Artemis.Plugins.LayerBrushes.AmbilightSmoothed.Screens.CapturePropertiesView"
+             x:DataType="screens:CapturePropertiesViewModel">
+    <Grid RowDefinitions="Auto,*" ColumnDefinitions="Auto,*" Margin="15">
+        <Border Grid.Column="0"
+                Grid.Row="0"
+                Grid.RowSpan="2"
+                Margin="0 0 15 0"
+                Width="330"
+                Classes="card"
+                VerticalAlignment="Stretch"
+                HorizontalAlignment="Left">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="0 0 20 0">
+                <Grid VerticalAlignment="Stretch" Margin="0" RowDefinitions="*,*" ColumnDefinitions="*,*">
+                    <Label>Source region</Label>
+                    <Button Grid.Row="0"
+                            Grid.Column="1"
+                            Classes="AppBarButton icon-button"
+                            ToolTip.Tip="Reset"
+                            HorizontalAlignment="Right"
+                            Command="{CompiledBinding ResetRegion}">
+                        <avalonia:MaterialIcon Kind="ArrowExpandAll" />
+                    </Button>
+
+                    <StackPanel Grid.Row="1" Grid.Column="0">
+                        <Label>X-offset</Label>
+                        <controls:NumberBox Margin="5 0 5 5"
+                                            Value="{CompiledBinding X}"
+                                            attachedProperties:NumberBoxAssist.SuffixText="px"
+                                            HorizontalAlignment="Stretch"
+                                            Minimum="0"
+                                            Maximum="{CompiledBinding MaxX}"
+                                            AcceptsExpression="True"
+                                            ValidationMode="Disabled"
+                                            LostFocus="InputFinished" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="1" Grid.Column="1">
+                        <Label>Y-offset</Label>
+                        <controls:NumberBox Margin="5 0 5 5"
+                                            Value="{CompiledBinding Y}"
+                                            attachedProperties:NumberBoxAssist.SuffixText="px"
+                                            HorizontalAlignment="Stretch"
+                                            Minimum="0"
+                                            Maximum="{CompiledBinding MaxY}"
+                                            AcceptsExpression="True"
+                                            ValidationMode="Disabled"
+                                            LostFocus="InputFinished" />
+                    </StackPanel>
+                </Grid>
+
+                <Grid VerticalAlignment="Stretch" Margin="0" ColumnDefinitions="*,*">
+                    <StackPanel Grid.Row="0" Grid.Column="0">
+                        <Label>Width</Label>
+                        <controls:NumberBox Margin="5 0 5 5"
+                                            Value="{CompiledBinding Width}"
+                                            attachedProperties:NumberBoxAssist.SuffixText="px"
+                                            HorizontalAlignment="Stretch"
+                                            Minimum="1"
+                                            Maximum="{CompiledBinding MaxWidth}"
+                                            AcceptsExpression="True"
+                                            ValidationMode="Disabled"
+                                            LostFocus="InputFinished" />
+                    </StackPanel>
+                    <StackPanel Grid.Row="0" Grid.Column="1">
+                        <Label>Height</Label>
+                        <controls:NumberBox Margin="5 0 5 5"
+                                            Value="{CompiledBinding Height}"
+                                            attachedProperties:NumberBoxAssist.SuffixText="px"
+                                            HorizontalAlignment="Stretch"
+                                            Minimum="1"
+                                            Maximum="{CompiledBinding MaxHeight}"
+                                            AcceptsExpression="True"
+                                            ValidationMode="Disabled"
+                                            LostFocus="InputFinished" />
+                    </StackPanel>
+                </Grid>
+
+                <Label Content="Adjustments" Margin="0 10 0 0" />
+                <CheckBox Content="Flip horizontally" IsChecked="{CompiledBinding FlipHorizontal}" PointerCaptureLost="PointerInputFinished" />
+                <CheckBox Content="Flip vertically" IsChecked="{CompiledBinding FlipVertical}" PointerCaptureLost="PointerInputFinished" />
+
+                <Label Content="Downscale level" Margin="0 10 0 0" />
+                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
+                    <controls:NumberBox Grid.Column="0"
+                                        Grid.Row="0"
+                                        Value="{CompiledBinding DownscaleLevel}"
+                                        Margin="0 0 5 0"
+                                        VerticalAlignment="Center"
+                                        Minimum="0" 
+                                        Maximum="10"/>
+                    <Slider Grid.Column="1"
+                            Grid.Row="0"
+                            Minimum="0" Maximum="10"
+                            TickFrequency="1"
+                            TickPlacement="BottomRight"
+                            Value="{CompiledBinding DownscaleLevel}"
+                            ToolTip.Tip="Downscale level"
+                            PointerCaptureLost="PointerInputFinished" />
+                    <TextBlock Grid.Column="0"
+                               Grid.Row="1"
+                               Grid.ColumnSpan="2"
+                               IsVisible="{CompiledBinding ShowDownscaleWarning}"
+                               Classes="warning" 
+                               TextWrapping="Wrap">
+                        Low value will have performance impact on large capture zones
+                    </TextBlock>
+                </Grid>
+
+                <Grid ColumnDefinitions="*,Auto" Margin="0 10 0 0">
+                    <Label Grid.Column="0" Content="Black-bar detection" Margin="0" />
+                    <avalonia:MaterialIcon Grid.Column="1"
+                                           VerticalAlignment="Center"
+                                           Kind="HelpCircle"
+                                           ToolTip.Tip="Attempts to remove black borders (also known as letterboxing) from the image" />
+                </Grid>
+
+                <StackPanel Orientation="Horizontal">
+                    <CheckBox Content="Left" IsChecked="{CompiledBinding BlackBarDetectionLeft}" MinWidth="80" PointerCaptureLost="PointerInputFinished" />
+                    <CheckBox Content="Right" IsChecked="{CompiledBinding BlackBarDetectionRight}" MinWidth="80" PointerCaptureLost="PointerInputFinished" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <CheckBox Content="Top" IsChecked="{CompiledBinding BlackBarDetectionTop}" MinWidth="80" PointerCaptureLost="PointerInputFinished" />
+                    <CheckBox Content="Bottom" IsChecked="{CompiledBinding BlackBarDetectionBottom}" MinWidth="80" PointerCaptureLost="PointerInputFinished" />
+                </StackPanel>
+
+                <Label Content="Detection threshold" Margin="0 10 0 0" />
+                <Grid ColumnDefinitions="Auto,*">
+                    <controls:NumberBox Grid.Column="0" Value="{CompiledBinding BlackBarDetectionThreshold}" Margin="0 0 5 0" VerticalAlignment="Center" />
+                    <Slider Grid.Column="1"
+                            Minimum="0" Maximum="50"
+                            TickFrequency="2"
+                            TickPlacement="BottomRight"
+                            Value="{CompiledBinding BlackBarDetectionThreshold}"
+                            ToolTip.Tip="Black-Bar detection threshold"
+                            PointerCaptureLost="PointerInputFinished" />
+                </Grid>
+
+                <Separator Margin="0 15 0 0" />
+
+                <Grid ColumnDefinitions="*,Auto" Margin="0 10 0 0">
+                    <CheckBox Grid.Column="0" Content="HDR" IsChecked="{CompiledBinding Hdr}" PointerCaptureLost="PointerInputFinished" />
+                    <avalonia:MaterialIcon Grid.Column="1"
+                                           VerticalAlignment="Center"
+                                           Kind="HelpCircle"
+                                           ToolTip.Tip="Applies SDR compensation for washed-out HDR captures (levels + saturation)." />
+                </Grid>
+
+                <Label Content="Black point" Margin="0 10 0 0" IsEnabled="{CompiledBinding Hdr}" />
+                <Grid ColumnDefinitions="Auto,*" IsEnabled="{CompiledBinding Hdr}">
+                    <controls:NumberBox Grid.Column="0" Value="{CompiledBinding HdrBlackPoint}" Margin="0 0 5 0" VerticalAlignment="Center" Minimum="0" Maximum="255" />
+                    <Slider Grid.Column="1"
+                            Minimum="0" Maximum="100"
+                            TickFrequency="5"
+                            TickPlacement="BottomRight"
+                            Value="{CompiledBinding HdrBlackPoint}"
+                            ToolTip.Tip="Black point (0-255)"
+                            PointerCaptureLost="PointerInputFinished" />
+                </Grid>
+
+                <Label Content="White point" Margin="0 10 0 0" IsEnabled="{CompiledBinding Hdr}" />
+                <Grid ColumnDefinitions="Auto,*" IsEnabled="{CompiledBinding Hdr}">
+                    <controls:NumberBox Grid.Column="0" Value="{CompiledBinding HdrWhitePoint}" Margin="0 0 5 0" VerticalAlignment="Center" Minimum="0" Maximum="255" />
+                    <Slider Grid.Column="1"
+                            Minimum="155" Maximum="255"
+                            TickFrequency="5"
+                            TickPlacement="BottomRight"
+                            Value="{CompiledBinding HdrWhitePoint}"
+                            ToolTip.Tip="White point (0-255)"
+                            PointerCaptureLost="PointerInputFinished" />
+                </Grid>
+
+                <Label Content="Saturation" Margin="0 10 0 0" IsEnabled="{CompiledBinding Hdr}" />
+                <Grid ColumnDefinitions="Auto,*" IsEnabled="{CompiledBinding Hdr}">
+                    <controls:NumberBox Grid.Column="0" Value="{CompiledBinding HdrSaturation}" Margin="0 0 5 0" VerticalAlignment="Center" Minimum="50" Maximum="200" />
+                    <Slider Grid.Column="1"
+                            Minimum="50" Maximum="200"
+                            TickFrequency="10"
+                            TickPlacement="BottomRight"
+                            Value="{CompiledBinding HdrSaturation}"
+                            ToolTip.Tip="Saturation percent (100 = unchanged)"
+                            PointerCaptureLost="PointerInputFinished" />
+                </Grid>
+                <TextBlock Classes="caption" TextWrapping="Wrap" Margin="0 5 0 0" IsEnabled="{CompiledBinding Hdr}">
+                    Use Black/White point to restore contrast; raise Saturation if HDR looks washed out.
+                </TextBlock>
+
+                <Separator Margin="0 15 0 0" />
+
+                <Grid ColumnDefinitions="*,Auto" Margin="0 10 0 0">
+                    <Label Grid.Column="0" Content="Smoothing Level" Margin="0" />
+                    <avalonia:MaterialIcon Grid.Column="1"
+                                           VerticalAlignment="Center"
+                                           Kind="HelpCircle"
+                                           ToolTip.Tip="Controls color smoothing intensity. 0 = no smoothing, 10 = maximum smoothing" />
+                </Grid>
+                <Grid ColumnDefinitions="Auto,*">
+                    <controls:NumberBox Grid.Column="0" Value="{CompiledBinding SmoothingLevel}" Margin="0 0 5 0" VerticalAlignment="Center" Minimum="0" Maximum="10" SmallChange="1" LargeChange="1" />
+                    <Slider Grid.Column="1"
+                            Minimum="0" Maximum="10"
+                            TickFrequency="1"
+                            TickPlacement="BottomRight"
+                            Value="{CompiledBinding SmoothingLevel}"
+                            ToolTip.Tip="Smoothing level (0 - 10)"
+                            PointerCaptureLost="PointerInputFinished" />
+                </Grid>
+                <TextBlock Classes="caption" TextWrapping="Wrap" Margin="0 5 0 0">
+                    0 = No smoothing (instant, jittery), 10 = Maximum smoothing (very smooth, slower response)
+                </TextBlock>
+
+                <Label Content="Frame Skip" Margin="0 10 0 0" />
+                <Grid ColumnDefinitions="Auto,*">
+                    <controls:NumberBox Grid.Column="0" Value="{CompiledBinding FrameSkip}" Margin="0 0 5 0" VerticalAlignment="Center" Minimum="0" Maximum="10" />
+                    <Slider Grid.Column="1"
+                            Minimum="0" Maximum="10"
+                            TickFrequency="1"
+                            TickPlacement="BottomRight"
+                            Value="{CompiledBinding FrameSkip}"
+                            ToolTip.Tip="Skip frames to reduce CPU usage"
+                            PointerCaptureLost="PointerInputFinished" />
+                </Grid>
+                <TextBlock Classes="caption" TextWrapping="Wrap" Margin="0 5 0 0">
+                    0 = Process every frame, higher = skip more frames for lower CPU usage
+                </TextBlock>
+            </StackPanel>
+            </ScrollViewer>
+        </Border>
+
+        <ScrollViewer Grid.Column="1" Grid.Row="0" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Auto" Padding="0 0 0 15" Margin="0 0 0 15">
+            <ItemsControl ItemsSource="{CompiledBinding CaptureScreens}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <UniformGrid Rows="1" Margin="-5 0" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <ContentControl Content="{Binding}" PointerReleased="InputElement_OnPointerReleased" />
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <Border Grid.Column="1" Grid.Row="1" Classes="card">
+            <Grid ColumnDefinitions="*,Auto,*" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <ContentControl Grid.Column="0" Content="{CompiledBinding CaptureRegionEditor}" VerticalAlignment="Center" ClipToBounds="False" />
+                <avalonia:MaterialIcon Grid.Column="1" Kind="ChevronRight" VerticalAlignment="Center" Width="64" Height="64" Margin="0 62 0 0" />
+                <ContentControl Grid.Column="2" Content="{CompiledBinding CaptureRegionDisplay}" VerticalAlignment="Center" />
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>
