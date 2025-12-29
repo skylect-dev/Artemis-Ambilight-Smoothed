@@ -34,6 +34,7 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed
         private int _hdrLastWhitePoint;
         private int _hdrLastSaturation;
         private int _hdrLastExposure;
+        private bool _hdrLastAutoEnabled;
 
         #endregion
 
@@ -52,6 +53,7 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed
             int smoothingLevel = properties.SmoothingLevel.CurrentValue;
             int frameSkip = properties.FrameSkip.CurrentValue;
             bool hdrEnabled = properties.Hdr.CurrentValue;
+            bool hdrAuto = properties.HdrAuto.CurrentValue;
             int hdrExposure = properties.HdrExposure.CurrentValue;
             int hdrBlackPoint = properties.HdrBlackPoint.CurrentValue;
             int hdrWhitePoint = properties.HdrWhitePoint.CurrentValue;
@@ -84,7 +86,8 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed
                     (_hdrLastBlackPoint != hdrBlackPoint || 
                      _hdrLastWhitePoint != hdrWhitePoint || 
                      _hdrLastSaturation != hdrSaturation ||
-                     _hdrLastExposure != hdrExposure);
+                     _hdrLastExposure != hdrExposure ||
+                     _hdrLastAutoEnabled != hdrAuto);
                 if (hdrSettingsChanged)
                     shouldProcess = true;
 
@@ -101,13 +104,24 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed
                     {
                         if (shouldProcess || dimensionsChanged)
                         {
-                            EnsureHdrLut(hdrExposure, hdrBlackPoint, hdrWhitePoint, hdrSaturation);
+                            int effectiveExposure = hdrExposure;
+                            if (hdrAuto)
+                            {
+                                int autoExposure = ComputeAutoExposurePercent(img, image.Width, image.Height, image.RawStride, hdrBlackPoint, hdrWhitePoint);
+                                float bias = hdrExposure / 100f;
+                                effectiveExposure = (int)MathF.Round(autoExposure * bias);
+                                effectiveExposure = Math.Clamp(effectiveExposure, 1, 400);
+                            }
+
+                            EnsureHdrLut(effectiveExposure, hdrBlackPoint, hdrWhitePoint, hdrSaturation);
                             EnsureHdrBuffer(image.Width, image.Height, image.RawStride);
                             fixed (byte* hdrPtr = _hdrAdjustedPixels)
                             {
                                 ApplyHdrCompensation(img, hdrPtr, image.Width, image.Height, image.RawStride, _hdrLut!, hdrSaturation);
                                 sourcePixels = hdrPtr;
                             }
+
+                            _hdrLastAutoEnabled = hdrAuto;
                         }
                         else if (_hdrAdjustedPixels != null)
                         {
@@ -235,6 +249,95 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed
                     }
                 }
             }
+        }
+
+        private static unsafe int ComputeAutoExposurePercent(byte* src, int width, int height, int stride, int blackPoint, int whitePoint)
+        {
+            // Goal: choose an exposure so a high percentile (bright-but-not-clipped) maps near the top
+            // of the output range using the existing filmic curve.
+
+            if (width <= 0 || height <= 0)
+                return 100;
+
+            Span<int> hist = stackalloc int[256];
+
+            int xStep = Math.Max(1, width / 80);
+            int yStep = Math.Max(1, height / 60);
+            int samples = 0;
+
+            for (int y = 0; y < height; y += yStep)
+            {
+                byte* row = src + (y * stride);
+                for (int x = 0; x < width; x += xStep)
+                {
+                    int i = x * 4;
+                    byte b = row[i + 0];
+                    byte g = row[i + 1];
+                    byte r = row[i + 2];
+                    int l = (r * 77 + g * 150 + b * 29) >> 8;
+                    hist[l]++;
+                    samples++;
+                }
+            }
+
+            if (samples <= 0)
+                return 100;
+
+            int p95 = GetPercentileFromHistogram(hist, samples, 0.95f);
+            int p995 = GetPercentileFromHistogram(hist, samples, 0.995f);
+            int refLuma = p995 >= 254 ? p95 : p995;
+            if (refLuma <= 0)
+                refLuma = 1;
+
+            float maxOut = Math.Clamp(whitePoint, 0, 255) / 255f;
+            // Aim just below the ceiling so highlights roll off rather than clip.
+            float desired = MathF.Min(0.96f, MathF.Max(0.10f, maxOut - 0.01f));
+
+            // Binary search exposure in [0.25 .. 4.0] (matches LUT clamp up to 400%).
+            float lo = 0.25f;
+            float hi = 4.0f;
+            for (int iter = 0; iter < 10; iter++)
+            {
+                float mid = (lo + hi) * 0.5f;
+                float y = EvaluateFilmic(refLuma, mid, blackPoint, whitePoint);
+                if (y < desired)
+                    lo = mid;
+                else
+                    hi = mid;
+            }
+
+            int result = (int)MathF.Round(((lo + hi) * 0.5f) * 100f);
+            return Math.Clamp(result, 1, 400);
+        }
+
+        private static float EvaluateFilmic(int inputByte, float exposure, int blackPoint, int whitePoint)
+        {
+            float x = (Math.Clamp(inputByte, 0, 255) / 255f) * exposure;
+            const float a = 2.51f, b = 0.03f, c = 2.43f, d = 0.59f, e = 0.14f;
+            float numerator = x * (a * x + b);
+            float denominator = x * (c * x + d) + e;
+            float y = denominator != 0f ? numerator / denominator : 0f;
+            y = Math.Clamp(y, 0f, 1f);
+
+            float minOut = Math.Clamp(blackPoint, 0, 255) / 255f;
+            float maxOut = Math.Clamp(whitePoint, 0, 255) / 255f;
+            if (maxOut <= minOut)
+                maxOut = MathF.Min(1f, minOut + (1f / 255f));
+            y = Math.Clamp(y, minOut, maxOut);
+            return y;
+        }
+
+        private static int GetPercentileFromHistogram(Span<int> hist, int total, float percentile)
+        {
+            int target = (int)MathF.Ceiling(total * Math.Clamp(percentile, 0f, 1f));
+            int cumulative = 0;
+            for (int i = 0; i < 256; i++)
+            {
+                cumulative += hist[i];
+                if (cumulative >= target)
+                    return i;
+            }
+            return 255;
         }
 
         private unsafe void ApplySmoothing(byte* currentPixels, int width, int height, int stride, float factor)

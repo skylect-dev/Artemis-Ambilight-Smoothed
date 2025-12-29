@@ -148,71 +148,11 @@
                 <Separator Margin="0 15 0 0" />
 
                 <Grid ColumnDefinitions="*,Auto" Margin="0 10 0 0">
-                    <CheckBox Grid.Column="0" Content="HDR" IsChecked="{CompiledBinding Hdr}" PointerCaptureLost="PointerInputFinished" />
+                    <CheckBox Grid.Column="0" Content="HDR Compensation" IsChecked="{CompiledBinding Hdr}" PointerCaptureLost="PointerInputFinished" />
                     <avalonia:MaterialIcon Grid.Column="1"
                                            VerticalAlignment="Center"
                                            Kind="HelpCircle"
-                                           ToolTip.Tip="Applies SDR compensation for washed-out HDR captures (levels + saturation)." />
-                </Grid>
-
-                <Grid ColumnDefinitions="*,Auto" Margin="0 10 0 0" IsEnabled="{CompiledBinding Hdr}">
-                    <Label Grid.Column="0" Content="Exposure" />
-                    <Button Grid.Column="1"
-                            Classes="AppBarButton icon-button"
-                            ToolTip.Tip="Reset to default (110%)"
-                            Command="{CompiledBinding ResetHdrExposure}">
-                        <avalonia:MaterialIcon Kind="Restore" Width="16" Height="16" />
-                    </Button>
-                </Grid>
-                <Grid ColumnDefinitions="Auto,*" IsEnabled="{CompiledBinding Hdr}">
-                    <controls:NumberBox Grid.Column="0" Value="{CompiledBinding HdrExposure}" Margin="0 0 5 0" VerticalAlignment="Center" Minimum="50" Maximum="300" />
-                    <Slider Grid.Column="1"
-                            Minimum="50" Maximum="300"
-                            TickFrequency="10"
-                            TickPlacement="BottomRight"
-                            Value="{CompiledBinding HdrExposure}"
-                            ToolTip.Tip="Exposure percent before tone mapping (lower = darker, higher = brighter)"
-                            PointerCaptureLost="PointerInputFinished" />
-                </Grid>
-
-                <Grid ColumnDefinitions="*,Auto" Margin="0 10 0 0" IsEnabled="{CompiledBinding Hdr}">
-                    <Label Grid.Column="0" Content="Black point" />
-                    <Button Grid.Column="1"
-                            Classes="AppBarButton icon-button"
-                            ToolTip.Tip="Reset to default (20)"
-                            Command="{CompiledBinding ResetHdrBlackPoint}">
-                        <avalonia:MaterialIcon Kind="Restore" Width="16" Height="16" />
-                    </Button>
-                </Grid>
-                <Grid ColumnDefinitions="Auto,*" IsEnabled="{CompiledBinding Hdr}">
-                    <controls:NumberBox Grid.Column="0" Value="{CompiledBinding HdrBlackPoint}" Margin="0 0 5 0" VerticalAlignment="Center" Minimum="0" Maximum="255" />
-                    <Slider Grid.Column="1"
-                            Minimum="0" Maximum="255"
-                            TickFrequency="10"
-                            TickPlacement="BottomRight"
-                            Value="{CompiledBinding HdrBlackPoint}"
-                            ToolTip.Tip="Output floor: raise to crush blacks"
-                            PointerCaptureLost="PointerInputFinished" />
-                </Grid>
-
-                <Grid ColumnDefinitions="*,Auto" Margin="0 10 0 0" IsEnabled="{CompiledBinding Hdr}">
-                    <Label Grid.Column="0" Content="White point" />
-                    <Button Grid.Column="1"
-                            Classes="AppBarButton icon-button"
-                            ToolTip.Tip="Reset to default (200)"
-                            Command="{CompiledBinding ResetHdrWhitePoint}">
-                        <avalonia:MaterialIcon Kind="Restore" Width="16" Height="16" />
-                    </Button>
-                </Grid>
-                <Grid ColumnDefinitions="Auto,*" IsEnabled="{CompiledBinding Hdr}">
-                    <controls:NumberBox Grid.Column="0" Value="{CompiledBinding HdrWhitePoint}" Margin="0 0 5 0" VerticalAlignment="Center" Minimum="0" Maximum="255" />
-                    <Slider Grid.Column="1"
-                            Minimum="0" Maximum="255"
-                            TickFrequency="10"
-                            TickPlacement="BottomRight"
-                            Value="{CompiledBinding HdrWhitePoint}"
-                            ToolTip.Tip="Output ceiling: lower to darken highlights, higher to keep detail"
-                            PointerCaptureLost="PointerInputFinished" />
+                                           ToolTip.Tip="Automatically adjusts exposure and tone mapping for washed-out HDR captures to preserve highlight detail." />
                 </Grid>
 
                 <Grid ColumnDefinitions="*,Auto" Margin="0 10 0 0" IsEnabled="{CompiledBinding Hdr}">
@@ -231,12 +171,9 @@
                             TickFrequency="10"
                             TickPlacement="BottomRight"
                             Value="{CompiledBinding HdrSaturation}"
-                            ToolTip.Tip="Saturation percent (100 = unchanged)"
+                            ToolTip.Tip="Saturation percent (100 = unchanged, increase if colors look washed out)"
                             PointerCaptureLost="PointerInputFinished" />
                 </Grid>
-                <TextBlock Classes="caption" TextWrapping="Wrap" Margin="0 5 0 0" IsEnabled="{CompiledBinding Hdr}">
-                    Use Black/White point to restore contrast; raise Saturation if HDR looks washed out.
-                </TextBlock>
 
                 <Separator Margin="0 15 0 0" />
 

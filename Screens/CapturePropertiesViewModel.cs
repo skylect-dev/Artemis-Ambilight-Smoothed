@@ -33,6 +33,7 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
     private int _blackBarDetectionThreshold;
     private bool _blackBarDetectionTop;
     private bool _hdr;
+    private bool _hdrAuto;
     private int _hdrExposure;
     private int _hdrBlackPoint;
     private int _hdrSaturation;
@@ -174,6 +175,12 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
         set => RaiseAndSetIfChanged(ref _hdr, value);
     }
 
+    public bool HdrAuto
+    {
+        get => _hdrAuto;
+        set => RaiseAndSetIfChanged(ref _hdrAuto, value);
+    }
+
     public int HdrExposure
     {
         get => _hdrExposure;
@@ -260,6 +267,7 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
         BlackBarDetectionThreshold = _properties.BlackBarDetectionThreshold;
 
         Hdr = _properties.Hdr;
+        HdrAuto = _properties.HdrAuto;
         HdrExposure = _properties.HdrExposure;
         HdrBlackPoint = _properties.HdrBlackPoint;
         HdrWhitePoint = _properties.HdrWhitePoint;
@@ -295,6 +303,7 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
         _properties.BlackBarDetectionThreshold.SetCurrentValue(BlackBarDetectionThreshold);
 
         _properties.Hdr.SetCurrentValue(Hdr);
+        _properties.HdrAuto.SetCurrentValue(HdrAuto);
         _properties.HdrExposure.SetCurrentValue(HdrExposure);
         _properties.HdrBlackPoint.SetCurrentValue(HdrBlackPoint);
         _properties.HdrWhitePoint.SetCurrentValue(HdrWhitePoint);
@@ -388,13 +397,13 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
 
     private void ExecuteResetHdrBlackPoint()
     {
-        HdrBlackPoint = 20;
+        HdrBlackPoint = 0;
         Save();
     }
 
     private void ExecuteResetHdrWhitePoint()
     {
-        HdrWhitePoint = 200;
+        HdrWhitePoint = 255;
         Save();
     }
 
