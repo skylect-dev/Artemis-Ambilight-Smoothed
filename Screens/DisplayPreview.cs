@@ -116,8 +116,12 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
                 else
                     WritePixels(ProcessedPreview, croppedImage);
             }
-            else if (ProcessedPreview != null)
+            else
             {
+                // When black bars are disabled, recreate ProcessedPreview with original dimensions if needed
+                if ((ProcessedPreview == null) || (Math.Abs(ProcessedPreview.Size.Width - processedImage.Width) > 0.001) || (Math.Abs(ProcessedPreview.Size.Height - processedImage.Height) > 0.001))
+                    ProcessedPreview = new WriteableBitmap(new PixelSize(processedImage.Width, processedImage.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
+
                 if (_hdr)
                     WritePixelsWithHdr(ProcessedPreview, processedImage);
                 else
