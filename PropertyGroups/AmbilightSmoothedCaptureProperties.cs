@@ -39,11 +39,11 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed.PropertyGroups
         {
             DownscaleLevel.DefaultValue = 6;
 
-            // HDR compensation defaults (off)
+            // HDR compensation defaults
             Hdr.DefaultValue = false;
-            HdrBlackPoint.DefaultValue = 0;    // 0-255
-            HdrWhitePoint.DefaultValue = 255;  // 0-255
-            HdrSaturation.DefaultValue = 120;  // percent (100 = unchanged)
+            HdrBlackPoint.DefaultValue = 30;   // Raise dark values to reduce washout
+            HdrWhitePoint.DefaultValue = 235;  // Compress bright values
+            HdrSaturation.DefaultValue = 120;  // 120% to boost washed-out colors
 
             SmoothingLevel.DefaultValue = 6;  // 0-10, higher = smoother but more lag
             FrameSkip.DefaultValue = 0;  // 0 = process every frame
