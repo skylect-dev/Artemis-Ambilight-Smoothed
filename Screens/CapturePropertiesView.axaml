@@ -156,6 +156,26 @@
                 </Grid>
 
                 <Grid ColumnDefinitions="*,Auto" Margin="0 10 0 0" IsEnabled="{CompiledBinding Hdr}">
+                    <Label Grid.Column="0" Content="Exposure" />
+                    <Button Grid.Column="1"
+                            Classes="AppBarButton icon-button"
+                            ToolTip.Tip="Reset to default (110%)"
+                            Command="{CompiledBinding ResetHdrExposure}">
+                        <avalonia:MaterialIcon Kind="Restore" Width="16" Height="16" />
+                    </Button>
+                </Grid>
+                <Grid ColumnDefinitions="Auto,*" IsEnabled="{CompiledBinding Hdr}">
+                    <controls:NumberBox Grid.Column="0" Value="{CompiledBinding HdrExposure}" Margin="0 0 5 0" VerticalAlignment="Center" Minimum="50" Maximum="300" />
+                    <Slider Grid.Column="1"
+                            Minimum="50" Maximum="300"
+                            TickFrequency="10"
+                            TickPlacement="BottomRight"
+                            Value="{CompiledBinding HdrExposure}"
+                            ToolTip.Tip="Exposure percent before tone mapping (lower = darker, higher = brighter)"
+                            PointerCaptureLost="PointerInputFinished" />
+                </Grid>
+
+                <Grid ColumnDefinitions="*,Auto" Margin="0 10 0 0" IsEnabled="{CompiledBinding Hdr}">
                     <Label Grid.Column="0" Content="Black point" />
                     <Button Grid.Column="1"
                             Classes="AppBarButton icon-button"
@@ -199,7 +219,7 @@
                     <Label Grid.Column="0" Content="Saturation" />
                     <Button Grid.Column="1"
                             Classes="AppBarButton icon-button"
-                            ToolTip.Tip="Reset to default (105%)"
+                            ToolTip.Tip="Reset to default (110%)"
                             Command="{CompiledBinding ResetHdrSaturation}">
                         <avalonia:MaterialIcon Kind="Restore" Width="16" Height="16" />
                     </Button>

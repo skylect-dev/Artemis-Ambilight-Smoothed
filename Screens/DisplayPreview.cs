@@ -25,6 +25,7 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
     private readonly bool _blackBarDetectionRight;
     
     private readonly bool _hdr;
+    private readonly int _hdrExposure;
     private readonly int _hdrBlackPoint;
     private readonly int _hdrWhitePoint;
     private readonly int _hdrSaturation;
@@ -62,12 +63,13 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
         _blackBarDetectionRight = properties.BlackBarDetectionRight;
         
         _hdr = properties.Hdr;
+        _hdrExposure = properties.HdrExposure;
         _hdrBlackPoint = properties.HdrBlackPoint;
         _hdrWhitePoint = properties.HdrWhitePoint;
         _hdrSaturation = properties.HdrSaturation;
         
         if (_hdr)
-            BuildHdrLut(_hdrBlackPoint, _hdrWhitePoint);
+            BuildHdrLut(_hdrExposure, _hdrBlackPoint, _hdrWhitePoint);
 
         _captureZone = AmbilightSmoothedBootstrapper.ScreenCaptureService!.GetScreenCapture(display).RegisterCaptureZone(0, 0, display.Width, display.Height);
         Preview = new WriteableBitmap(new PixelSize(_captureZone.Width, _captureZone.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
@@ -142,21 +144,31 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
         }
     }
 
-    private void BuildHdrLut(int blackPoint, int whitePoint)
+    private void BuildHdrLut(int exposurePercent, int blackPoint, int whitePoint)
     {
         blackPoint = Math.Clamp(blackPoint, 0, 255);
         whitePoint = Math.Clamp(whitePoint, 0, 255);
         if (whitePoint <= blackPoint)
             whitePoint = Math.Min(255, blackPoint + 1);
 
+        exposurePercent = Math.Clamp(exposurePercent, 1, 400);
+
         _hdrLut = new byte[256];
-        // Compress full 0-255 input range INTO the black/white point range
-        // This brings down bright HDR highlights to more reasonable SDR values
-        int range = whitePoint - blackPoint;
+        // Filmic/ACES-like curve with exposure, then clamp to black/white as output bounds
+        float exposure = exposurePercent / 100f;
+        float minOut = blackPoint / 255f;
+        float maxOut = whitePoint / 255f;
+        const float a = 2.51f, b = 0.03f, c = 2.43f, d = 0.59f, e = 0.14f;
+
         for (int i = 0; i < 256; i++)
         {
-            int v = blackPoint + (i * range / 255);
-            _hdrLut[i] = (byte)Math.Clamp(v, 0, 255);
+            float x = (i / 255f) * exposure;
+            float numerator = x * (a * x + b);
+            float denominator = x * (c * x + d) + e;
+            float y = denominator != 0f ? numerator / denominator : 0f;
+            y = Math.Clamp(y, 0f, 1f);
+            y = Math.Clamp(y, minOut, maxOut);
+            _hdrLut[i] = (byte)Math.Clamp((int)(y * 255f + 0.5f), 0, 255);
         }
     }
 

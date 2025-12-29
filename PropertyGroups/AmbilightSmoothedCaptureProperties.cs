@@ -27,6 +27,7 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed.PropertyGroups
 
         // HDR compensation (for washed out HDR captures)
         public BoolLayerProperty Hdr { get; set; }
+        public IntLayerProperty HdrExposure { get; set; }
         public IntLayerProperty HdrBlackPoint { get; set; }
         public IntLayerProperty HdrWhitePoint { get; set; }
         public IntLayerProperty HdrSaturation { get; set; }
@@ -41,6 +42,7 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed.PropertyGroups
 
             // HDR compensation defaults
             Hdr.DefaultValue = false;
+            HdrExposure.DefaultValue = 110;  // Exposure percent (100 = 1.0x)
             HdrBlackPoint.DefaultValue = 20;   // Raise dark values to reduce washout
             HdrWhitePoint.DefaultValue = 200;  // Aggressive highlight compression for HDR
             HdrSaturation.DefaultValue = 110;  // Moderate boost for washed colors

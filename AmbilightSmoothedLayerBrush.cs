@@ -33,6 +33,7 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed
         private int _hdrLastBlackPoint;
         private int _hdrLastWhitePoint;
         private int _hdrLastSaturation;
+        private int _hdrLastExposure;
 
         #endregion
 
@@ -51,6 +52,7 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed
             int smoothingLevel = properties.SmoothingLevel.CurrentValue;
             int frameSkip = properties.FrameSkip.CurrentValue;
             bool hdrEnabled = properties.Hdr.CurrentValue;
+            int hdrExposure = properties.HdrExposure.CurrentValue;
             int hdrBlackPoint = properties.HdrBlackPoint.CurrentValue;
             int hdrWhitePoint = properties.HdrWhitePoint.CurrentValue;
             int hdrSaturation = properties.HdrSaturation.CurrentValue;
@@ -81,7 +83,8 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed
                 bool hdrSettingsChanged = hdrEnabled && 
                     (_hdrLastBlackPoint != hdrBlackPoint || 
                      _hdrLastWhitePoint != hdrWhitePoint || 
-                     _hdrLastSaturation != hdrSaturation);
+                     _hdrLastSaturation != hdrSaturation ||
+                     _hdrLastExposure != hdrExposure);
                 if (hdrSettingsChanged)
                     shouldProcess = true;
 
@@ -98,7 +101,7 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed
                     {
                         if (shouldProcess || dimensionsChanged)
                         {
-                            EnsureHdrLut(hdrBlackPoint, hdrWhitePoint, hdrSaturation);
+                            EnsureHdrLut(hdrExposure, hdrBlackPoint, hdrWhitePoint, hdrSaturation);
                             EnsureHdrBuffer(image.Width, image.Height, image.RawStride);
                             fixed (byte* hdrPtr = _hdrAdjustedPixels)
                             {
@@ -153,29 +156,41 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed
                 _hdrAdjustedPixels = new byte[bufferSize];
         }
 
-        private void EnsureHdrLut(int blackPoint, int whitePoint, int saturation)
+        private void EnsureHdrLut(int exposurePercent, int blackPoint, int whitePoint, int saturation)
         {
             blackPoint = Math.Clamp(blackPoint, 0, 255);
             whitePoint = Math.Clamp(whitePoint, 0, 255);
             if (whitePoint <= blackPoint)
                 whitePoint = Math.Min(255, blackPoint + 1);
 
+            exposurePercent = Math.Clamp(exposurePercent, 1, 400);
+
             if (_hdrLut != null &&
+                _hdrLastExposure == exposurePercent &&
                 _hdrLastBlackPoint == blackPoint &&
                 _hdrLastWhitePoint == whitePoint &&
                 _hdrLastSaturation == saturation)
                 return;
 
             _hdrLut = new byte[256];
-        // Compress full 0-255 input range INTO the black/white point range
-        // This brings down bright HDR highlights to more reasonable SDR values
-        int range = whitePoint - blackPoint;
-        for (int i = 0; i < 256; i++)
-        {
-            int v = blackPoint + (i * range / 255);
-            _hdrLut[i] = (byte)Math.Clamp(v, 0, 255);
-        }
+            // Filmic/ACES-like curve with exposure, then clamp to black/white as output bounds
+            float exposure = exposurePercent / 100f;
+            float minOut = blackPoint / 255f;
+            float maxOut = whitePoint / 255f;
+            const float a = 2.51f, b = 0.03f, c = 2.43f, d = 0.59f, e = 0.14f;
 
+            for (int i = 0; i < 256; i++)
+            {
+                float x = (i / 255f) * exposure;
+                float numerator = x * (a * x + b);
+                float denominator = x * (c * x + d) + e;
+                float y = denominator != 0f ? numerator / denominator : 0f;
+                y = Math.Clamp(y, 0f, 1f);
+                y = Math.Clamp(y, minOut, maxOut);
+                _hdrLut[i] = (byte)Math.Clamp((int)(y * 255f + 0.5f), 0, 255);
+            }
+
+            _hdrLastExposure = exposurePercent;
             _hdrLastBlackPoint = blackPoint;
             _hdrLastWhitePoint = whitePoint;
             _hdrLastSaturation = saturation;
