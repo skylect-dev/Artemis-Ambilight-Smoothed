@@ -21,6 +21,35 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed
         private ICaptureZone? _captureZone;
         private bool _creatingCaptureZone;
 
+        public double GetCurrentCaptureFps()
+        {
+            if (_display == null || _screenCaptureService == null)
+                return 0;
+            
+            var screenCapture = _screenCaptureService.GetScreenCapture(_display.Value);
+            if (screenCapture is ScreenCapture.AmbilightSmoothedScreenCapture ambilightCapture)
+                return ambilightCapture.CurrentFps;
+            
+            return 0;
+        }
+        
+        private void UpdateTargetCaptureFps()
+        {
+            if (_display == null || _screenCaptureService == null)
+                return;
+            
+            var screenCapture = _screenCaptureService.GetScreenCapture(_display.Value);
+            if (screenCapture is ScreenCapture.AmbilightSmoothedScreenCapture ambilightCapture)
+            {
+                // For old profiles without TargetCaptureFps property, use default value (60)
+                int targetFps = Properties.Capture.TargetCaptureFps.CurrentValue;
+                if (targetFps < 20 || targetFps > 60)
+                    targetFps = Properties.Capture.TargetCaptureFps.DefaultValue;
+                
+                ambilightCapture.TargetFps = targetFps;
+            }
+        }
+
         // Smoothing state
         private byte[]? _smoothedPixels;
         private int _frameCounter;
@@ -42,6 +71,7 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed
 
         public override void Update(double deltaTime)
         {
+            UpdateTargetCaptureFps();
             _captureZone?.RequestUpdate();
         }
 
@@ -424,6 +454,9 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed
                 int y = Math.Min(_display.Value.Height - height, props.Y);
                 _captureZone = _screenCaptureService.GetScreenCapture(_display.Value).RegisterCaptureZone(x, y, width, height, props.DownscaleLevel);
                 _captureZone.AutoUpdate = false; //TODO DarthAffe 09.04.2021: config?
+                
+                // Initialize target FPS immediately after creating capture zone
+                UpdateTargetCaptureFps();
             }
             finally
             {

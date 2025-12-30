@@ -35,6 +35,7 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed.PropertyGroups
         // Smoothing properties
         public IntLayerProperty SmoothingLevel { get; set; }
         public IntLayerProperty FrameSkip { get; set; }
+        public IntLayerProperty TargetCaptureFps { get; set; }
 
         protected override void PopulateDefaults()
         {
@@ -48,7 +49,8 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed.PropertyGroups
             AutoExposure.DefaultValue = false;
 
             SmoothingLevel.DefaultValue = 6;  // 0-10, higher = smoother but more lag
-            FrameSkip.DefaultValue = 0;  // 0 = process every frame
+            FrameSkip.DefaultValue = 0;       // 0-10, higher = lower CPU but less responsive
+            TargetCaptureFps.DefaultValue = 30; // 20-60, target capture rate
         }
 
         protected override void EnableProperties()

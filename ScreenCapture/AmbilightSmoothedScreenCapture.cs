@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using ScreenCapture.NET;
@@ -12,12 +13,21 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed.ScreenCapture
         private readonly IScreenCapture _screenCapture;
 
         private int _zoneCount = 0;
+        private double _currentFps = 0;
+        private int _targetFps = 60; // Configurable 20-60
 
         private Task? _updateTask;
         private CancellationTokenSource? _cancellationTokenSource;
         private CancellationToken _cancellationToken = CancellationToken.None;
 
         public Display Display => _screenCapture.Display;
+        public double CurrentFps => _currentFps;
+        
+        public int TargetFps
+        {
+            get => _targetFps;
+            set => _targetFps = Math.Clamp(value, 20, 60);
+        }
 
         #endregion
 
@@ -43,16 +53,55 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed.ScreenCapture
 
         private void UpdateLoop()
         {
+            int consecutiveFailures = 0;
+            long lastFpsUpdateTime = Stopwatch.GetTimestamp();
+            long ticksPerSecond = Stopwatch.Frequency;
+            int successCount = 0;
+            
             while (true)
             {
                 _cancellationToken.ThrowIfCancellationRequested();
+                
+                // Measure only the capture time, not including previous sleep
+                long captureStartTime = Stopwatch.GetTimestamp();
                 bool success = _screenCapture.CaptureScreen();
+                long captureEndTime = Stopwatch.GetTimestamp();
                 Updated?.Invoke(this, new ScreenCaptureUpdatedEventArgs(success));
                 
-                // Adaptive backoff: be polite to GPU under load
-                // On success: 1ms sleep (allows ~1000 FPS theoretical max)
-                // On failure: 16ms sleep (~60 FPS retry rate when GPU is busy)
-                Thread.Sleep(success ? 1 : 16);
+                if (success)
+                {
+                    consecutiveFailures = 0;
+                    successCount++;
+                    
+                    // Update FPS display every 500ms for more responsive feedback
+                    long timeSinceLastFpsUpdate = captureEndTime - lastFpsUpdateTime;
+                    if (timeSinceLastFpsUpdate > ticksPerSecond / 2) // 500ms
+                    {
+                        double avgFps = successCount / (timeSinceLastFpsUpdate / (double)ticksPerSecond);
+                        _currentFps = Math.Min(avgFps, 999.9); // Cap display at 999.9
+                        lastFpsUpdateTime = captureEndTime;
+                        successCount = 0;
+                    }
+                    
+                    // Calculate precise sleep time to maintain target FPS
+                    // Only consider the capture time itself, not previous sleeps
+                    int maxTargetFps = _targetFps;
+                    double targetFrameTimeMs = 1000.0 / maxTargetFps;
+                    
+                    long captureTicks = captureEndTime - captureStartTime;
+                    double captureMs = (captureTicks * 1000.0) / ticksPerSecond;
+                    
+                    // Sleep for remaining time to hit target frame time (minimum 1ms)
+                    double sleepTimeMs = Math.Max(1.0, targetFrameTimeMs - captureMs);
+                    Thread.Sleep((int)Math.Round(sleepTimeMs));
+                }
+                else
+                {
+                    consecutiveFailures++;
+                    // Simple backoff on failure - wait 16ms before retry
+                    // User controls responsiveness via Target FPS slider
+                    Thread.Sleep(16);
+                }
             }
         }
 

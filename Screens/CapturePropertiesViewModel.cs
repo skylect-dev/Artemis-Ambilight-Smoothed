@@ -39,6 +39,7 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
     private bool _autoExposure;
     private int _smoothingLevel;
     private int _frameSkip;
+    private int _targetCaptureFps;
 
     private CaptureRegionDisplayViewModel? _captureRegionDisplay;
     private CaptureRegionEditorViewModel? _captureRegionEditor;
@@ -52,6 +53,7 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
     private int _x;
     private int _y;
     private bool _saveOnChange;
+    private double _captureFps;
 
     public CapturePropertiesViewModel(AmbilightSmoothedLayerBrush layerBrush, IWindowService windowService) : base(layerBrush)
     {
@@ -67,6 +69,7 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
         ResetSaturation = ReactiveCommand.Create(ExecuteResetSaturation);
         ResetSmoothingLevel = ReactiveCommand.Create(ExecuteResetSmoothingLevel);
         ResetFrameSkip = ReactiveCommand.Create(ExecuteResetFrameSkip);
+        ResetTargetCaptureFps = ReactiveCommand.Create(ExecuteResetTargetCaptureFps);
 
         _maxX = this.WhenAnyValue(vm => vm.Width, vm => vm.SelectedCaptureScreen, (width, screen) => (screen?.Display.Width ?? 0) - width).ToProperty(this, vm => vm.MaxX);
         _maxY = this.WhenAnyValue(vm => vm.Height, vm => vm.SelectedCaptureScreen, (height, screen) => (screen?.Display.Height ?? 0) - height).ToProperty(this, vm => vm.MaxY);
@@ -94,6 +97,12 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
     public int MaxHeight => _maxHeight.Value;
     public bool ShowDownscaleWarning => _showDownscaleWarning.Value;
     
+    public double CaptureFps
+    {
+        get => _captureFps;
+        private set => RaiseAndSetIfChanged(ref _captureFps, value);
+    }
+    
     public CaptureRegionEditorViewModel? CaptureRegionEditor
     {
         get => _captureRegionEditor;
@@ -119,6 +128,7 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
     public ReactiveCommand<Unit, Unit> ResetSaturation { get; }
     public ReactiveCommand<Unit, Unit> ResetSmoothingLevel { get; }
     public ReactiveCommand<Unit, Unit> ResetFrameSkip { get; }
+    public ReactiveCommand<Unit, Unit> ResetTargetCaptureFps { get; }
 
     public int X
     {
@@ -233,6 +243,12 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
         get => _frameSkip;
         set => RaiseAndSetIfChanged(ref _frameSkip, value);
     }
+    
+    public int TargetCaptureFps
+    {
+        get => _targetCaptureFps;
+        set => RaiseAndSetIfChanged(ref _targetCaptureFps, value);
+    }
 
     public bool EnableValidation
     {
@@ -267,6 +283,12 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
 
         SmoothingLevel = _properties.SmoothingLevel;
         FrameSkip = _properties.FrameSkip;
+        
+        // For old profiles without TargetCaptureFps, use default
+        int targetFps = _properties.TargetCaptureFps;
+        if (targetFps < 20 || targetFps > 60)
+            targetFps = _properties.TargetCaptureFps.DefaultValue;
+        TargetCaptureFps = targetFps;
 
         if (_properties.CaptureFullScreen && SelectedCaptureScreen != null)
         {
@@ -302,6 +324,7 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
 
         _properties.SmoothingLevel.SetCurrentValue(SmoothingLevel);
         _properties.FrameSkip.SetCurrentValue(FrameSkip);
+        _properties.TargetCaptureFps.SetCurrentValue(TargetCaptureFps);
 
         if (SelectedCaptureScreen != null)
         {
@@ -365,6 +388,9 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
             captureScreenViewModel.Update();
         CaptureRegionEditor?.Update();
         CaptureRegionDisplay?.Update();
+        
+        // Update capture FPS display
+        CaptureFps = AmbilightSmoothedLayerBrush.GetCurrentCaptureFps();
     }
 
     private void ExecuteResetRegion()
@@ -413,6 +439,12 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
     private void ExecuteResetFrameSkip()
     {
         FrameSkip = 0;
+        Save();
+    }
+    
+    private void ExecuteResetTargetCaptureFps()
+    {
+        TargetCaptureFps = _properties.TargetCaptureFps.DefaultValue;
         Save();
     }
 
