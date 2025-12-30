@@ -1,5 +1,6 @@
 using System;
 using Artemis.Plugins.LayerBrushes.AmbilightSmoothed.PropertyGroups;
+using Artemis.Plugins.LayerBrushes.AmbilightSmoothed.Services;
 using Avalonia;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
@@ -14,6 +15,10 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
     #region Properties & Fields
 
     private bool _isDisposed;
+    
+    private readonly HdrScreenCapture? _hdrCapture;
+    private byte[]? _hdrCaptureBuffer;
+    private bool _isHdr;
 
     private readonly ICaptureZone _captureZone;
     private readonly ICaptureZone? _processedCaptureZone;
@@ -36,6 +41,12 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
     private int _hdrLastBuiltWhitePoint;
 
     public Display Display { get; }
+    
+    public bool IsHdr
+    {
+        get => _isHdr;
+        private set => this.RaiseAndSetIfChanged(ref _isHdr, value);
+    }
 
     public WriteableBitmap Preview { get; }
 
@@ -50,15 +61,26 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
 
     #region Constructors
 
-    public DisplayPreview(Display display, bool highQuality = false)
+    public DisplayPreview(Display display, bool highQuality = false, HdrScreenCapture? hdrCapture = null)
     {
         Display = display;
+        
+        _hdrCapture = hdrCapture;
+        _isHdr = hdrCapture != null;
 
-        _captureZone = AmbilightSmoothedBootstrapper.ScreenCaptureService!.GetScreenCapture(display).RegisterCaptureZone(0, 0, display.Width, display.Height, highQuality ? 0 : 2);
-        Preview = new WriteableBitmap(new PixelSize(_captureZone.Width, _captureZone.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
+        if (_hdrCapture != null)
+        {
+            _hdrCaptureBuffer = new byte[_hdrCapture.Width * _hdrCapture.Height * 4];
+            Preview = new WriteableBitmap(new PixelSize(_hdrCapture.Width, _hdrCapture.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
+        }
+        else
+        {
+            _captureZone = AmbilightSmoothedBootstrapper.ScreenCaptureService!.GetScreenCapture(display).RegisterCaptureZone(0, 0, display.Width, display.Height, highQuality ? 0 : 2);
+            Preview = new WriteableBitmap(new PixelSize(_captureZone.Width, _captureZone.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
+        }
     }
 
-    public DisplayPreview(Display display, AmbilightSmoothedCaptureProperties properties)
+    public DisplayPreview(Display display, AmbilightSmoothedCaptureProperties properties, HdrScreenCapture? hdrCapture = null)
     {
         Display = display;
         _blackBarDetectionBottom = properties.BlackBarDetectionBottom;
@@ -72,9 +94,20 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
         _hdrBlackPoint = properties.HdrBlackPoint;
         _hdrWhitePoint = properties.HdrWhitePoint;
         _hdrSaturation = properties.HdrSaturation;
-
-        _captureZone = AmbilightSmoothedBootstrapper.ScreenCaptureService!.GetScreenCapture(display).RegisterCaptureZone(0, 0, display.Width, display.Height);
-        Preview = new WriteableBitmap(new PixelSize(_captureZone.Width, _captureZone.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
+        
+        _hdrCapture = hdrCapture;
+        _isHdr = hdrCapture != null;
+        
+        if (_hdrCapture != null)
+        {
+            _hdrCaptureBuffer = new byte[_hdrCapture.Width * _hdrCapture.Height * 4];
+            Preview = new WriteableBitmap(new PixelSize(_hdrCapture.Width, _hdrCapture.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
+        }
+        else
+        {
+            _captureZone = AmbilightSmoothedBootstrapper.ScreenCaptureService!.GetScreenCapture(display).RegisterCaptureZone(0, 0, display.Width, display.Height);
+            Preview = new WriteableBitmap(new PixelSize(_captureZone.Width, _captureZone.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
+        }
 
         if (((properties.X + properties.Width) <= display.Width) && ((properties.Y + properties.Height) <= display.Height))
         {
@@ -96,10 +129,27 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
 
         try
         {
-            // DarthAffe 11.09.2023: Accessing the low-level images is a source of potential errors in the future since we assume the pixel-format. Currently both used providers are BGRA, but if there are ever issues with shifted colors, this is the place to start investigating.
-
-            using (_captureZone.Lock())
-                WritePixels(Preview, _captureZone.GetRefImage<ColorBGRA>());
+            // Use HDR capture if available
+            if (_hdrCapture != null && _hdrCaptureBuffer != null)
+            {
+                if (_hdrCapture.CaptureFrame(_hdrCaptureBuffer))
+                {
+                    unsafe
+                    {
+                        fixed (byte* bufferPtr = _hdrCaptureBuffer)
+                        {
+                            using ILockedFramebuffer framebuffer = Preview.Lock();
+                            System.Buffer.MemoryCopy(bufferPtr, (void*)framebuffer.Address, _hdrCaptureBuffer.Length, _hdrCaptureBuffer.Length);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                // DarthAffe 11.09.2023: Accessing the low-level images is a source of potential errors in the future since we assume the pixel-format. Currently both used providers are BGRA, but if there are ever issues with shifted colors, this is the place to start investigating.
+                using (_captureZone.Lock())
+                    WritePixels(Preview, _captureZone.GetRefImage<ColorBGRA>());
+            }
 
             if (_processedCaptureZone == null)
                 return;
@@ -335,8 +385,15 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
 
     public void Dispose()
     {
-        AmbilightSmoothedBootstrapper.ScreenCaptureService!.GetScreenCapture(Display).UnregisterCaptureZone(_captureZone);
+        if (_isDisposed) return;
         _isDisposed = true;
+        
+        _hdrCaptureBuffer = null;
+
+        if (_hdrCapture == null)
+            AmbilightSmoothedBootstrapper.ScreenCaptureService!.GetScreenCapture(Display).UnregisterCaptureZone(_captureZone);
+        if (_processedCaptureZone != null)
+            AmbilightSmoothedBootstrapper.ScreenCaptureService!.GetScreenCapture(Display).UnregisterCaptureZone(_processedCaptureZone);
     }
 
     #endregion

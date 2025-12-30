@@ -19,6 +19,7 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed
         public bool PropertiesOpen { get; set; }
         
         public bool IsUsingHdrCapture => _hdrCapture != null;
+        public HdrScreenCapture? HdrCapture => _hdrCapture;
 
         private Display? _display;
         private ICaptureZone? _captureZone;
@@ -532,11 +533,16 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed
                 int height = Math.Min(_display.Value.Height, props.Height);
                 int x = Math.Min(_display.Value.Width - width, props.X);
                 int y = Math.Min(_display.Value.Height - height, props.Y);
-                _captureZone = _screenCaptureService.GetScreenCapture(_display.Value).RegisterCaptureZone(x, y, width, height, props.DownscaleLevel);
-                _captureZone.AutoUpdate = false; //TODO DarthAffe 09.04.2021: config?
                 
-                // Try to use HDR capture if display supports it
+                // Try to use HDR capture first if display supports it
                 TryInitializeHdrCapture();
+                
+                // If HDR capture wasn't initialized, fall back to ScreenCapture.NET
+                if (_hdrCapture == null)
+                {
+                    _captureZone = _screenCaptureService.GetScreenCapture(_display.Value).RegisterCaptureZone(x, y, width, height, props.DownscaleLevel);
+                    _captureZone.AutoUpdate = false; //TODO DarthAffe 09.04.2021: config?
+                }
             }
             finally
             {
@@ -548,23 +554,32 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed
         {
             if (_display == null)
                 return;
+            
+            // Dispose existing HDR capture if reinitializing
+            if (_hdrCapture != null)
+            {
+                _hdrCapture.Dispose();
+                _hdrCapture = null;
+                _hdrCaptureBuffer = null;
+            }
                 
             try
             {
+                bool enableHdr = Properties.Capture.ForceHdrCapture.CurrentValue;
+                DebugLogger.Log($"[AmbilightSmoothed] TryInitializeHdrCapture: enableHdr={enableHdr}");
+                
                 HdrScreenCapture hdrCapture = new HdrScreenCapture(_display.Value);
-                if (hdrCapture.Initialize() && hdrCapture.IsHdr)
+                if (hdrCapture.Initialize(enableHdr))
                 {
-                    // Successfully initialized HDR capture
+                    // Successfully initialized (either HDR or SDR mode)
+                    DebugLogger.Log($"[AmbilightSmoothed] HDR capture initialized: IsHdr={hdrCapture.IsHdr}");
                     _hdrCapture = hdrCapture;
                     _hdrCaptureBuffer = new byte[hdrCapture.Width * hdrCapture.Height * 4];
-                    
-                    // Remove the ScreenCapture.NET capture zone since we're using HDR capture
-                    RemoveCaptureZone();
-                    _display = _display.Value; // Keep display reference
                 }
                 else
                 {
-                    // Not HDR or failed to initialize, dispose and fall back to ScreenCapture.NET
+                    // Failed to initialize
+                    DebugLogger.Log($"[AmbilightSmoothed] HDR capture initialization failed");
                     hdrCapture.Dispose();
                 }
             }

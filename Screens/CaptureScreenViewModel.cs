@@ -1,5 +1,6 @@
 using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
+using Artemis.Plugins.LayerBrushes.AmbilightSmoothed.Services;
 using Artemis.UI.Shared;
 using Avalonia.Controls;
 using ReactiveUI;
@@ -12,11 +13,11 @@ public class CaptureScreenViewModel : ActivatableViewModelBase
     private bool _isSelected;
     private Image? _previewImage;
 
-    public CaptureScreenViewModel(Display display)
+    public CaptureScreenViewModel(Display display, HdrScreenCapture? hdrCapture = null)
     {
         Display = display;
         DisplayName = $"Display {Display.Index + 1}";
-        DisplayPreview = new DisplayPreview(Display);
+        DisplayPreview = new DisplayPreview(Display, hdrCapture: hdrCapture);
 
         this.WhenActivated(d => Disposable.Create(() => DisplayPreview.Dispose()).DisposeWith(d));
     }

@@ -2,6 +2,7 @@ using System;
 using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
 using System.Threading.Tasks;
+using Artemis.Plugins.LayerBrushes.AmbilightSmoothed.Services;
 using Artemis.UI.Shared;
 using Avalonia;
 using Avalonia.Controls;
@@ -16,11 +17,11 @@ public class CaptureRegionEditorViewModel : ActivatableViewModelBase
     private Rect _captureRegion;
     private Image? _previewImage;
 
-    public CaptureRegionEditorViewModel(CapturePropertiesViewModel capturePropertiesViewModel, Display display)
+    public CaptureRegionEditorViewModel(CapturePropertiesViewModel capturePropertiesViewModel, Display display, HdrScreenCapture? hdrCapture = null)
     {
         CapturePropertiesViewModel = capturePropertiesViewModel;
         Display = display;
-        DisplayPreview = new DisplayPreview(Display);
+        DisplayPreview = new DisplayPreview(Display, hdrCapture: hdrCapture);
 
         this.WhenActivated(d =>
         {

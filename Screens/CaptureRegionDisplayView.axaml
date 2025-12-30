@@ -16,16 +16,31 @@
             <TextBlock Grid.Row="1" Classes="subtitle" TextAlignment="Center" Margin="10" TextWrapping="Wrap">
                 The image shown below is drawn by the brush
             </TextBlock>
-            <Image Name="DisplayPreviewImage"
-                   Grid.Row="2"
-                   Source="{CompiledBinding DisplayPreview.ProcessedPreview}"
-                   Stretch="Uniform"
-                   RenderOptions.BitmapInterpolationMode="LowQuality">
-                <Image.RenderTransform>
-                    <ScaleTransform ScaleX="{CompiledBinding Properties.FlipHorizontal.BaseValue, Converter={StaticResource RenderScaleConverter}}"
-                                    ScaleY="{CompiledBinding Properties.FlipVertical.BaseValue, Converter={StaticResource RenderScaleConverter}}" />
-                </Image.RenderTransform>
-            </Image>
+            <Grid Grid.Row="2">
+                <Image Name="DisplayPreviewImage"
+                       Source="{CompiledBinding DisplayPreview.ProcessedPreview}"
+                       Stretch="Uniform"
+                       RenderOptions.BitmapInterpolationMode="LowQuality">
+                    <Image.RenderTransform>
+                        <ScaleTransform ScaleX="{CompiledBinding Properties.FlipHorizontal.BaseValue, Converter={StaticResource RenderScaleConverter}}"
+                                        ScaleY="{CompiledBinding Properties.FlipVertical.BaseValue, Converter={StaticResource RenderScaleConverter}}" />
+                    </Image.RenderTransform>
+                </Image>
+                <!-- HDR/SDR Badge -->
+                <Border HorizontalAlignment="Right"
+                        VerticalAlignment="Top"
+                        Margin="8"
+                        CornerRadius="3"
+                        Padding="6,2">
+                    <Border.Background>
+                        <SolidColorBrush Color="{Binding DisplayPreview.IsHdr, Converter={x:Static converters:HdrColorConverter.Instance}}" />
+                    </Border.Background>
+                    <TextBlock Text="{Binding DisplayPreview.IsHdr, Converter={x:Static converters:HdrTextConverter.Instance}}"
+                               Foreground="White"
+                               FontWeight="Bold"
+                               FontSize="10" />
+                </Border>
+            </Grid>
         </Grid>
     </Border>
 </UserControl>

@@ -155,6 +155,14 @@
                                            ToolTip.Tip="Automatically adjusts exposure and tone mapping for washed-out HDR captures to preserve highlight detail." />
                 </Grid>
                 
+                <Grid ColumnDefinitions="*,Auto" Margin="0 5 0 0">
+                    <CheckBox Grid.Column="0" Content="Enable HDR Capture" IsChecked="{CompiledBinding ForceHdrCapture}" PointerCaptureLost="PointerInputFinished" />
+                    <avalonia:MaterialIcon Grid.Column="1"
+                                           VerticalAlignment="Center"
+                                           Kind="HelpCircle"
+                                           ToolTip.Tip="Enable HDR capture using FP16 format. Use this when Windows is in HDR mode for better color accuracy." />
+                </Grid>
+                
                 <!-- HDR Capture Status Indicator -->
                 <Border IsVisible="{CompiledBinding IsUsingHdrCapture}"
                         Background="#20FFD700"

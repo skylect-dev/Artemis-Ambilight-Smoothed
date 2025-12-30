@@ -24,26 +24,33 @@ public sealed class HdrScreenCapture : IDisposable
     private int _height;
     private byte[]? _frameBuffer;
     private DXGI_FORMAT _captureFormat;
+    private DXGI_COLOR_SPACE_TYPE _detectedColorSpace;
     
     public bool IsHdr => _isHdr;
     public int Width => _width;
     public int Height => _height;
+    public DXGI_COLOR_SPACE_TYPE DetectedColorSpace => _detectedColorSpace;
     
     public HdrScreenCapture(Display display)
     {
         _displayName = display.DeviceName;
     }
     
-    public bool Initialize()
+    public bool Initialize(bool enableHdr = false)
     {
+        DebugLogger.Log($"[HdrScreenCapture] Initialize START: enableHdr={enableHdr}, display={_displayName}");
         try
         {
             // Create DXGI Factory
             Guid factoryGuid = NativeMethods.IID_IDXGIFactory1;
             int hr = NativeMethods.CreateDXGIFactory1(ref factoryGuid, out _dxgiFactory);
             if (hr != NativeMethods.S_OK)
+            {
+                DebugLogger.Log($"[HdrScreenCapture] CreateDXGIFactory1 failed: hr=0x{hr:X8}");
                 return false;
+            }
             
+            DebugLogger.Log($"[HdrScreenCapture] DXGI Factory created successfully");
             IDXGIFactory1 factory = (IDXGIFactory1)Marshal.GetObjectForIUnknown(_dxgiFactory);
             
             // Enumerate adapters and outputs to find our display
@@ -51,35 +58,74 @@ public sealed class HdrScreenCapture : IDisposable
             IntPtr outputPtr = IntPtr.Zero;
             IntPtr adapterPtr = IntPtr.Zero;
             
+            DebugLogger.Log($"[HdrScreenCapture] Starting adapter enumeration");
+            
             for (uint adapterIndex = 0; !found; adapterIndex++)
             {
                 try
                 {
-                    factory.EnumAdapters1(adapterIndex, out adapterPtr);
+                    DebugLogger.Log($"[HdrScreenCapture] Trying adapter {adapterIndex}");
+                    hr = factory.EnumAdapters(adapterIndex, out adapterPtr);
+                    DebugLogger.Log($"[HdrScreenCapture] EnumAdapters returned hr=0x{hr:X8}, adapterPtr=0x{adapterPtr:X}");
+                    
+                    // S_OK = 0x00000000, S_FALSE = 0x00000001, both are success
+                    // DXGI_ERROR_NOT_FOUND = 0x887A0002 means no more adapters
+                    if (hr < 0)
+                    {
+                        DebugLogger.Log($"[HdrScreenCapture] EnumAdapters failed with error, stopping enumeration");
+                        break;
+                    }
+                    
+                    if (adapterPtr == IntPtr.Zero)
+                    {
+                        DebugLogger.Log($"[HdrScreenCapture] Adapter pointer is null, no more adapters");
+                        break;
+                    }
+                    
+                    DebugLogger.Log($"[HdrScreenCapture] Got adapter, creating COM wrapper");
                     IDXGIAdapter adapter = (IDXGIAdapter)Marshal.GetObjectForIUnknown(adapterPtr);
                     
                     for (uint outputIndex = 0; !found; outputIndex++)
                     {
                         try
                         {
-                            adapter.EnumOutputs(outputIndex, out outputPtr);
+                            DebugLogger.Log($"[HdrScreenCapture] Trying output {outputIndex} on adapter {adapterIndex}");
+                            hr = adapter.EnumOutputs(outputIndex, out outputPtr);
+                            DebugLogger.Log($"[HdrScreenCapture] EnumOutputs returned hr=0x{hr:X8}, outputPtr=0x{outputPtr:X}");
+                            
+                            if (hr < 0)
+                            {
+                                DebugLogger.Log($"[HdrScreenCapture] EnumOutputs failed with error, moving to next adapter");
+                                break;
+                            }
+                            
+                            if (outputPtr == IntPtr.Zero)
+                            {
+                                DebugLogger.Log($"[HdrScreenCapture] Output pointer is null, no more outputs");
+                                break;
+                            }
+                            
+                            DebugLogger.Log($"[HdrScreenCapture] Got output, creating COM wrapper");
                             IDXGIOutput output = (IDXGIOutput)Marshal.GetObjectForIUnknown(outputPtr);
                             
                             // Check if this is our display
                             // For now, just use the first output on the first adapter
                             // In a full implementation, we'd match by device name
+                            DebugLogger.Log($"[HdrScreenCapture] Found output, using it");
                             _dxgiOutput = outputPtr;
                             found = true;
                             break;
                         }
-                        catch
+                        catch (Exception ex)
                         {
+                            DebugLogger.Log($"[HdrScreenCapture] Output enumeration exception: {ex.Message}");
                             break;
                         }
                     }
                     
                     if (found && outputPtr != IntPtr.Zero)
                     {
+                        DebugLogger.Log($"[HdrScreenCapture] Creating D3D11 device");
                         // Create D3D11 device
                         D3D_FEATURE_LEVEL[] featureLevels = new[]
                         {
@@ -102,23 +148,38 @@ public sealed class HdrScreenCapture : IDisposable
                             out _d3dContext);
                         
                         if (hr != NativeMethods.S_OK)
-                            return false;
-                        
-                        // Query for IDXGIOutput6 to check HDR support
-                        IDXGIOutput6 output6 = (IDXGIOutput6)Marshal.GetObjectForIUnknown(outputPtr);
-                        
-                        output6.GetDesc1(out DXGI_OUTPUT_DESC1 outputDesc);
-                        
-                        // Check if display is HDR
-                        _isHdr = outputDesc.ColorSpace == DXGI_COLOR_SPACE_TYPE.DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
-                        
-                        RECT bounds = outputDesc.DesktopCoordinates;
-                        _width = bounds.Right - bounds.Left;
-                        _height = bounds.Bottom - bounds.Top;
-                        
-                        // Try HDR formats if display is HDR
-                        if (_isHdr)
                         {
+                            DebugLogger.Log($"[HdrScreenCapture] D3D11CreateDevice failed: hr=0x{hr:X8}");
+                            return false;
+                        }
+                        
+                        DebugLogger.Log($"[HdrScreenCapture] D3D11 device created, querying for IDXGIOutput6");
+                        
+                        // Try to QueryInterface for IDXGIOutput6 (Windows 10+)
+                        Guid output6Guid = new Guid("068346e8-aaec-4b84-add7-137f513f77a1"); // IID_IDXGIOutput6
+                        hr = Marshal.QueryInterface(outputPtr, ref output6Guid, out IntPtr output6Ptr);
+                        
+                        bool hasOutput6 = (hr == NativeMethods.S_OK && output6Ptr != IntPtr.Zero);
+                        DebugLogger.Log($"[HdrScreenCapture] QueryInterface for IDXGIOutput6: hr=0x{hr:X8}, hasOutput6={hasOutput6}");
+                        
+                        // Use HDR if enabled via toggle AND Output6 is available
+                        _isHdr = enableHdr && hasOutput6;
+                        
+                        if (_isHdr && output6Ptr != IntPtr.Zero)
+                        {
+                            IDXGIOutput6 output6 = (IDXGIOutput6)Marshal.GetObjectForIUnknown(output6Ptr);
+                            output6.GetDesc1(out DXGI_OUTPUT_DESC1 outputDesc);
+                            
+                            // Store detected color space for diagnostics
+                            _detectedColorSpace = outputDesc.ColorSpace;
+                            
+                            RECT bounds = outputDesc.DesktopCoordinates;
+                            _width = bounds.Right - bounds.Left;
+                            _height = bounds.Bottom - bounds.Top;
+                            
+                            DebugLogger.Log($"[HdrScreenCapture] Initialize: enableHdr={enableHdr}, detectedColorSpace={outputDesc.ColorSpace}");
+                            
+                            // Try HDR formats
                             DXGI_FORMAT[] hdrFormats = new[]
                             {
                                 DXGI_FORMAT.DXGI_FORMAT_R16G16B16A16_FLOAT,
@@ -127,22 +188,47 @@ public sealed class HdrScreenCapture : IDisposable
                             
                             hr = output6.DuplicateOutput1(_d3dDevice, 0, (uint)hdrFormats.Length, hdrFormats, out _dxgiDuplication);
                             
+                            DebugLogger.Log($"[HdrScreenCapture] DuplicateOutput1 result: hr=0x{hr:X8}");
+                            
                             if (hr == NativeMethods.S_OK)
                             {
                                 _captureFormat = DXGI_FORMAT.DXGI_FORMAT_R16G16B16A16_FLOAT;
+                                DebugLogger.Log($"[HdrScreenCapture] HDR capture initialized with FP16 format");
+                                Marshal.Release(output6Ptr);
                             }
                             else
                             {
-                                // Fallback to SDR
-                                _isHdr = false;
+                                // HDR was requested but failed
+                                DebugLogger.Log($"[HdrScreenCapture] HDR capture failed - returning false");
+                                Marshal.Release(output6Ptr);
+                                return false;
                             }
                         }
-                        
-                        // Fallback to standard BGRA format
-                        if (!_isHdr)
+                        else if (!enableHdr || !hasOutput6)
                         {
-                            output6.DuplicateOutput(_d3dDevice, out _dxgiDuplication);
+                            // Use SDR capture with IDXGIOutput
+                            IDXGIOutput output = (IDXGIOutput)Marshal.GetObjectForIUnknown(outputPtr);
+                            
+                            // Get output dimensions from IDXGIOutput
+                            // We need to get desc differently for IDXGIOutput (not Output6)
+                            _width = 1920; // Fallback, we'll get real dimensions from duplication
+                            _height = 1080;
+                            
+                            DebugLogger.Log($"[HdrScreenCapture] Using SDR capture with BGRA format");
+                            hr = output.DuplicateOutput(_d3dDevice, out _dxgiDuplication);
+                            DebugLogger.Log($"[HdrScreenCapture] DuplicateOutput result: hr=0x{hr:X8}");
+                            
+                            if (hr != NativeMethods.S_OK)
+                            {
+                                DebugLogger.Log($"[HdrScreenCapture] DuplicateOutput failed");
+                                if (hasOutput6 && output6Ptr != IntPtr.Zero)
+                                    Marshal.Release(output6Ptr);
+                                return false;
+                            }
+                            
                             _captureFormat = DXGI_FORMAT.DXGI_FORMAT_B8G8R8A8_UNORM;
+                            if (hasOutput6 && output6Ptr != IntPtr.Zero)
+                                Marshal.Release(output6Ptr);
                         }
                         
                         if (_dxgiDuplication == IntPtr.Zero)
@@ -158,16 +244,23 @@ public sealed class HdrScreenCapture : IDisposable
                     
                     Marshal.Release(adapterPtr);
                 }
-                catch
+                catch (Exception ex)
                 {
+                    DebugLogger.Log($"[HdrScreenCapture] Adapter enumeration ended or failed: {ex.Message}");
                     break;
                 }
             }
             
+            if (!found)
+            {
+                DebugLogger.Log($"[HdrScreenCapture] No display found during enumeration");
+            }
+            
             return false;
         }
-        catch
+        catch (Exception ex)
         {
+            DebugLogger.Log($"[HdrScreenCapture] Initialize exception: {ex.Message}\n{ex.StackTrace}");
             Dispose();
             return false;
         }

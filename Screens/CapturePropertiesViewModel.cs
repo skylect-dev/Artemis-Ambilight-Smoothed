@@ -41,6 +41,7 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
     private int _smoothingLevel;
     private int _frameSkip;
     private bool _isUsingHdrCapture;
+    private bool _forceHdrCapture;
 
     private CaptureRegionDisplayViewModel? _captureRegionDisplay;
     private CaptureRegionEditorViewModel? _captureRegionEditor;
@@ -77,6 +78,9 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
         _showDownscaleWarning = this.WhenAnyValue(vm => vm.DownscaleLevel, s => s < 3).ToProperty(this, vm => vm.ShowDownscaleWarning);
         _updateTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(16), DispatcherPriority.Normal, (_, _) => Update());
         _updateTimer.Start();
+        
+        // Log that settings opened
+        DebugLogger.Log($"[CapturePropertiesViewModel] Settings opened - Log file: {DebugLogger.GetLogPath()}");
 
         ViewForMixins.WhenActivated((IActivatableViewModel) this, (CompositeDisposable d) =>
         {
@@ -182,6 +186,12 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
         set => RaiseAndSetIfChanged(ref _hdrAuto, value);
     }
 
+    public bool ForceHdrCapture
+    {
+        get => _forceHdrCapture;
+        set => RaiseAndSetIfChanged(ref _forceHdrCapture, value);
+    }
+
     public int HdrExposure
     {
         get => _hdrExposure;
@@ -275,6 +285,7 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
 
         Hdr = _properties.Hdr;
         HdrAuto = _properties.HdrAuto;
+        ForceHdrCapture = _properties.ForceHdrCapture;
         HdrExposure = _properties.HdrExposure;
         HdrBlackPoint = _properties.HdrBlackPoint;
         HdrWhitePoint = _properties.HdrWhitePoint;
@@ -311,6 +322,7 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
 
         _properties.Hdr.SetCurrentValue(Hdr);
         _properties.HdrAuto.SetCurrentValue(HdrAuto);
+        _properties.ForceHdrCapture.SetCurrentValue(ForceHdrCapture);
         _properties.HdrExposure.SetCurrentValue(HdrExposure);
         _properties.HdrBlackPoint.SetCurrentValue(HdrBlackPoint);
         _properties.HdrWhitePoint.SetCurrentValue(HdrWhitePoint);
@@ -329,11 +341,34 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
                                                           Y == 0 &&
                                                           SelectedCaptureScreen.Display.Width == Width &&
                                                           SelectedCaptureScreen.Display.Height == Height);
-
-            CaptureRegionDisplay = new CaptureRegionDisplayViewModel(SelectedCaptureScreen.Display, _properties);
         }
 
-        Task.Run(() => AmbilightSmoothedLayerBrush.RecreateCaptureZone()).ConfigureAwait(false);
+        // Recreate capture zone and wait for HDR capture to initialize
+        DebugLogger.Log($"[CapturePropertiesViewModel] Save() called - ForceHdrCapture VM value={ForceHdrCapture}, Property value will be={ForceHdrCapture}");
+        Task.Run(async () =>
+        {
+            // Small delay to ensure property value has propagated
+            await Task.Delay(50);
+            
+            DebugLogger.Log($"[CapturePropertiesViewModel] About to call RecreateCaptureZone - Property value={_properties.ForceHdrCapture.CurrentValue}");
+            AmbilightSmoothedLayerBrush.RecreateCaptureZone();
+            
+            // Wait a bit for capture zone to be created
+            await Task.Delay(150);
+            
+            // Update previews with new HDR capture reference on UI thread
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                if (SelectedCaptureScreen != null)
+                {
+                    DebugLogger.Log($"[CapturePropertiesViewModel] Updating preview: IsUsingHdrCapture={AmbilightSmoothedLayerBrush.IsUsingHdrCapture}");
+                    CaptureRegionDisplay = new CaptureRegionDisplayViewModel(SelectedCaptureScreen.Display, _properties, AmbilightSmoothedLayerBrush.HdrCapture);
+                }
+                
+                // Update IsUsingHdrCapture to refresh badge
+                IsUsingHdrCapture = AmbilightSmoothedLayerBrush.IsUsingHdrCapture;
+            });
+        }).ConfigureAwait(false);
     }
 
     private async void Initialize(CompositeDisposable d)
@@ -355,7 +390,7 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
     {
         CaptureScreens.AddRange(_screenCaptureService.GetGraphicsCards()
             .SelectMany(gg => _screenCaptureService.GetDisplays(gg))
-            .Select(d => new CaptureScreenViewModel(d))
+            .Select(d => new CaptureScreenViewModel(d, AmbilightSmoothedLayerBrush.HdrCapture))
             .ToList());
 
         if (!CaptureScreens.Any())
@@ -448,9 +483,9 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
             ExecuteResetRegion();
         // Recreate the region editor for the screen
         if (CaptureRegionEditor?.Display != SelectedCaptureScreen.Display)
-            CaptureRegionEditor = new CaptureRegionEditorViewModel(this, SelectedCaptureScreen.Display);
+            CaptureRegionEditor = new CaptureRegionEditorViewModel(this, SelectedCaptureScreen.Display, AmbilightSmoothedLayerBrush.HdrCapture);
         if (CaptureRegionDisplay?.Display != SelectedCaptureScreen.Display)
-            CaptureRegionDisplay = new CaptureRegionDisplayViewModel(SelectedCaptureScreen.Display, _properties);
+            CaptureRegionDisplay = new CaptureRegionDisplayViewModel(SelectedCaptureScreen.Display, _properties, AmbilightSmoothedLayerBrush.HdrCapture);
         
         if (_saveOnChange)
             Save();

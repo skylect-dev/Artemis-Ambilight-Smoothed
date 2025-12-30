@@ -22,11 +22,15 @@ internal enum DXGI_MODE_ROTATION
     DXGI_MODE_ROTATION_ROTATE270 = 4
 }
 
-internal enum DXGI_COLOR_SPACE_TYPE
+public enum DXGI_COLOR_SPACE_TYPE
 {
     DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709 = 0,
     DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709 = 1,
+    DXGI_COLOR_SPACE_RGB_STUDIO_G2084_NONE_P2020 = 11, // HDR10 Studio
     DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020 = 12, // HDR10
+    DXGI_COLOR_SPACE_YCBCR_STUDIO_G2084_LEFT_P2020 = 13, // HDR10 YCbCr
+    DXGI_COLOR_SPACE_RGB_STUDIO_G22_NONE_P2020 = 14, // Display P3 Studio
+    DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P2020 = 15, // Display P3
 }
 
 internal enum D3D_DRIVER_TYPE
@@ -199,16 +203,38 @@ internal struct DXGI_OUTPUT_DESC1
 #region COM Interfaces
 
 [ComImport]
+[Guid("aec22fb8-76f3-4639-9be0-28eb43a67a2e")]
+[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+internal interface IDXGIObject
+{
+    void SetPrivateData(ref Guid Name, uint DataSize, IntPtr pData);
+    void SetPrivateDataInterface(ref Guid Name, IntPtr pUnknown);
+    void GetPrivateData(ref Guid Name, ref uint pDataSize, IntPtr pData);
+    void GetParent(ref Guid riid, out IntPtr ppParent);
+}
+
+[ComImport]
 [Guid("7b7166ec-21c7-44ae-b21a-c9ae321ae369")]
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
 internal interface IDXGIFactory1
 {
-    void EnumAdapters(uint Adapter, out IntPtr ppAdapter);
+    // IDXGIObject methods
+    void SetPrivateData(ref Guid Name, uint DataSize, IntPtr pData);
+    void SetPrivateDataInterface(ref Guid Name, IntPtr pUnknown);
+    void GetPrivateData(ref Guid Name, ref uint pDataSize, IntPtr pData);
+    void GetParent(ref Guid riid, out IntPtr ppParent);
+    
+    // IDXGIFactory methods
+    [PreserveSig]
+    int EnumAdapters(uint Adapter, out IntPtr ppAdapter);
     void MakeWindowAssociation(IntPtr WindowHandle, uint Flags);
     void GetWindowAssociation(out IntPtr pWindowHandle);
     void CreateSwapChain(IntPtr pDevice, IntPtr pDesc, out IntPtr ppSwapChain);
     void CreateSoftwareAdapter(IntPtr Module, out IntPtr ppAdapter);
-    void EnumAdapters1(uint Adapter, out IntPtr ppAdapter);
+    
+    // IDXGIFactory1 methods
+    [PreserveSig]
+    int EnumAdapters1(uint Adapter, out IntPtr ppAdapter);
     [PreserveSig]
     int IsCurrent();
 }
@@ -218,7 +244,15 @@ internal interface IDXGIFactory1
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
 internal interface IDXGIAdapter
 {
-    void EnumOutputs(uint Output, out IntPtr ppOutput);
+    // IDXGIObject methods
+    void SetPrivateData(ref Guid Name, uint DataSize, IntPtr pData);
+    void SetPrivateDataInterface(ref Guid Name, IntPtr pUnknown);
+    void GetPrivateData(ref Guid Name, ref uint pDataSize, IntPtr pData);
+    void GetParent(ref Guid riid, out IntPtr ppParent);
+    
+    // IDXGIAdapter methods
+    [PreserveSig]
+    int EnumOutputs(uint Output, out IntPtr ppOutput);
     void GetDesc(IntPtr pDesc);
     void CheckInterfaceSupport(ref Guid InterfaceName, out long pUMDVersion);
 }
@@ -228,6 +262,13 @@ internal interface IDXGIAdapter
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
 internal interface IDXGIOutput
 {
+    // IDXGIObject methods
+    void SetPrivateData(ref Guid Name, uint DataSize, IntPtr pData);
+    void SetPrivateDataInterface(ref Guid Name, IntPtr pUnknown);
+    void GetPrivateData(ref Guid Name, ref uint pDataSize, IntPtr pData);
+    void GetParent(ref Guid riid, out IntPtr ppParent);
+    
+    // IDXGIOutput methods
     void GetDesc(out RECT pDesc);
     void GetDisplayModeList(DXGI_FORMAT EnumFormat, uint Flags, ref uint pNumModes, IntPtr pDesc);
     void FindClosestMatchingMode(IntPtr pModeToMatch, IntPtr pClosestMatch, IntPtr pConcernedDevice);
@@ -240,6 +281,8 @@ internal interface IDXGIOutput
     void SetDisplaySurface(IntPtr pScanoutSurface);
     void GetDisplaySurfaceData(IntPtr pDestination);
     void GetFrameStatistics(IntPtr pStats);
+    [PreserveSig]
+    int DuplicateOutput(IntPtr pDevice, out IntPtr ppOutputDuplication);
 }
 
 [ComImport]
@@ -247,6 +290,12 @@ internal interface IDXGIOutput
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
 internal interface IDXGIOutput6
 {
+    // IDXGIObject methods
+    void SetPrivateData(ref Guid Name, uint DataSize, IntPtr pData);
+    void SetPrivateDataInterface(ref Guid Name, IntPtr pUnknown);
+    void GetPrivateData(ref Guid Name, ref uint pDataSize, IntPtr pData);
+    void GetParent(ref Guid riid, out IntPtr ppParent);
+    
     // IDXGIOutput methods
     void GetDesc(IntPtr pDesc);
     void GetDisplayModeList(DXGI_FORMAT EnumFormat, uint Flags, ref uint pNumModes, IntPtr pDesc);
@@ -260,12 +309,13 @@ internal interface IDXGIOutput6
     void SetDisplaySurface(IntPtr pScanoutSurface);
     void GetDisplaySurfaceData(IntPtr pDestination);
     void GetFrameStatistics(IntPtr pStats);
+    [PreserveSig]
+    int DuplicateOutput(IntPtr pDevice, out IntPtr ppOutputDuplication);
     
-    // IDXGIOutput1-5 methods (simplified - not all needed)
-    void DuplicateOutput(IntPtr pDevice, out IntPtr ppOutputDuplication);
-    void GetDesc1(out DXGI_OUTPUT_DESC1 pDesc);
-    
-    // IDXGIOutput6 method
+    // IDXGIOutput1 methods
+    void GetDisplayModeList1(DXGI_FORMAT EnumFormat, uint Flags, ref uint pNumModes, IntPtr pDesc);
+    void FindClosestMatchingMode1(IntPtr pModeToMatch, IntPtr pClosestMatch, IntPtr pConcernedDevice);
+    void GetDisplaySurfaceData1(IntPtr pDestination);
     [PreserveSig]
     int DuplicateOutput1(
         IntPtr pDevice,
@@ -273,6 +323,28 @@ internal interface IDXGIOutput6
         uint SupportedFormatsCount,
         [MarshalAs(UnmanagedType.LPArray)] DXGI_FORMAT[] pSupportedFormats,
         out IntPtr ppOutputDuplication);
+    
+    // IDXGIOutput2 methods  
+    bool SupportsOverlays();
+    
+    // IDXGIOutput3 methods
+    void CheckOverlaySupport(DXGI_FORMAT EnumFormat, IntPtr pConcernedDevice, out uint pFlags);
+    
+    // IDXGIOutput4 methods
+    void CheckOverlayColorSpaceSupport(DXGI_FORMAT Format, DXGI_COLOR_SPACE_TYPE ColorSpace, IntPtr pConcernedDevice, out uint pFlags);
+    
+    // IDXGIOutput5 methods
+    [PreserveSig]
+    int DuplicateOutput1_5(
+        IntPtr pDevice,
+        uint Flags,
+        uint SupportedFormatsCount,
+        [MarshalAs(UnmanagedType.LPArray)] DXGI_FORMAT[] pSupportedFormats,
+        out IntPtr ppOutputDuplication);
+    
+    // IDXGIOutput6 methods
+    void GetDesc1(out DXGI_OUTPUT_DESC1 pDesc);
+    void CheckHardwareCompositionSupport(out uint pFlags);
 }
 
 [ComImport]

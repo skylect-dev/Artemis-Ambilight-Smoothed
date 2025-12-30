@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:screens="clr-namespace:Artemis.Plugins.LayerBrushes.AmbilightSmoothed.Screens"
+             xmlns:converters="clr-namespace:Artemis.Plugins.LayerBrushes.AmbilightSmoothed.Converters"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Artemis.Plugins.LayerBrushes.AmbilightSmoothed.Screens.CaptureScreenView"
              x:DataType="screens:CaptureScreenViewModel">
@@ -37,11 +38,27 @@
                 <TextBlock Text="{CompiledBinding Display.GraphicsCard.Name}" Classes="subtitle" />
             </StackPanel>
             <Border Grid.Row="0" Grid.Column="1" ClipToBounds="True" CornerRadius="0 8 8 0">
-                <Image Name="DisplayPreviewImage"
-                       Height="130"
-                       Source="{CompiledBinding DisplayPreview.Preview}"
-                       RenderOptions.BitmapInterpolationMode="LowQuality"
-                       Stretch="Uniform" />
+                <Grid>
+                    <Image Name="DisplayPreviewImage"
+                           Height="130"
+                           Source="{CompiledBinding DisplayPreview.Preview}"
+                           RenderOptions.BitmapInterpolationMode="LowQuality"
+                           Stretch="Uniform" />
+                    <!-- HDR/SDR Badge -->
+                    <Border HorizontalAlignment="Right"
+                            VerticalAlignment="Top"
+                            Margin="8"
+                            CornerRadius="3"
+                            Padding="6,2">
+                        <Border.Background>
+                            <SolidColorBrush Color="{Binding DisplayPreview.IsHdr, Converter={x:Static converters:HdrColorConverter.Instance}}" />
+                        </Border.Background>
+                        <TextBlock Text="{Binding DisplayPreview.IsHdr, Converter={x:Static converters:HdrTextConverter.Instance}}"
+                                   Foreground="White"
+                                   FontWeight="Bold"
+                                   FontSize="10" />
+                    </Border>
+                </Grid>
             </Border>
 
         </Grid>
