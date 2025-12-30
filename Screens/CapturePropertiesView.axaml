@@ -20,278 +20,296 @@
                 HorizontalAlignment="Left">
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Margin="0 0 20 0">
-                <Grid VerticalAlignment="Stretch" Margin="0" RowDefinitions="*,*" ColumnDefinitions="*,*">
-                    <Label>Source region</Label>
-                    <Button Grid.Row="0"
-                            Grid.Column="1"
-                            Classes="AppBarButton icon-button"
-                            ToolTip.Tip="Reset"
-                            HorizontalAlignment="Right"
-                            Command="{CompiledBinding ResetRegion}">
-                        <avalonia:MaterialIcon Kind="ArrowExpandAll" />
-                    </Button>
+                
+                <!-- Capture Region Section -->
+                <Expander Header="Capture Region" IsExpanded="False" Margin="0 0 0 10">
+                    <StackPanel Margin="10">
+                        <Grid VerticalAlignment="Stretch" Margin="0 0 0 10" RowDefinitions="Auto" ColumnDefinitions="*,Auto">
+                            <Label Grid.Column="0">Source region</Label>
+                            <Button Grid.Column="1"
+                                    Classes="AppBarButton icon-button"
+                                    ToolTip.Tip="Reset"
+                                    HorizontalAlignment="Right"
+                                    Command="{CompiledBinding ResetRegion}">
+                                <avalonia:MaterialIcon Kind="ArrowExpandAll" />
+                            </Button>
+                        </Grid>
 
-                    <StackPanel Grid.Row="1" Grid.Column="0">
-                        <Label>X-offset</Label>
-                        <controls:NumberBox Margin="5 0 5 5"
-                                            Value="{CompiledBinding X}"
-                                            attachedProperties:NumberBoxAssist.SuffixText="px"
-                                            HorizontalAlignment="Stretch"
-                                            Minimum="0"
-                                            Maximum="{CompiledBinding MaxX}"
-                                            AcceptsExpression="True"
-                                            ValidationMode="Disabled"
-                                            LostFocus="InputFinished" />
+                        <Grid VerticalAlignment="Stretch" Margin="0" ColumnDefinitions="*,*">
+                            <StackPanel Grid.Column="0">
+                                <Label>X-offset</Label>
+                                <controls:NumberBox Margin="5 0 5 5"
+                                                    Value="{CompiledBinding X}"
+                                                    attachedProperties:NumberBoxAssist.SuffixText="px"
+                                                    HorizontalAlignment="Stretch"
+                                                    Minimum="0"
+                                                    Maximum="{CompiledBinding MaxX}"
+                                                    AcceptsExpression="True"
+                                                    ValidationMode="Disabled"
+                                                    LostFocus="InputFinished" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1">
+                                <Label>Y-offset</Label>
+                                <controls:NumberBox Margin="5 0 5 5"
+                                                    Value="{CompiledBinding Y}"
+                                                    attachedProperties:NumberBoxAssist.SuffixText="px"
+                                                    HorizontalAlignment="Stretch"
+                                                    Minimum="0"
+                                                    Maximum="{CompiledBinding MaxY}"
+                                                    AcceptsExpression="True"
+                                                    ValidationMode="Disabled"
+                                                    LostFocus="InputFinished" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid VerticalAlignment="Stretch" Margin="0" ColumnDefinitions="*,*">
+                            <StackPanel Grid.Column="0">
+                                <Label>Width</Label>
+                                <controls:NumberBox Margin="5 0 5 5"
+                                                    Value="{CompiledBinding Width}"
+                                                    attachedProperties:NumberBoxAssist.SuffixText="px"
+                                                    HorizontalAlignment="Stretch"
+                                                    Minimum="1"
+                                                    Maximum="{CompiledBinding MaxWidth}"
+                                                    AcceptsExpression="True"
+                                                    ValidationMode="Disabled"
+                                                    LostFocus="InputFinished" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <Label>Height</Label>
+                                <controls:NumberBox Margin="5 0 5 5"
+                                                    Value="{CompiledBinding Height}"
+                                                    attachedProperties:NumberBoxAssist.SuffixText="px"
+                                                    HorizontalAlignment="Stretch"
+                                                    Minimum="1"
+                                                    Maximum="{CompiledBinding MaxHeight}"
+                                                    AcceptsExpression="True"
+                                                    ValidationMode="Disabled"
+                                                    LostFocus="InputFinished" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Label Content="Adjustments" Margin="0 10 0 0" />
+                        <CheckBox Content="Flip horizontally" IsChecked="{CompiledBinding FlipHorizontal}" PointerCaptureLost="PointerInputFinished" />
+                        <CheckBox Content="Flip vertically" IsChecked="{CompiledBinding FlipVertical}" PointerCaptureLost="PointerInputFinished" />
+
+                        <Label Content="Downscale level" Margin="0 10 0 0" />
+                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
+                            <controls:NumberBox Grid.Column="0"
+                                                Grid.Row="0"
+                                                Value="{CompiledBinding DownscaleLevel}"
+                                                Margin="0 0 5 0"
+                                                VerticalAlignment="Center"
+                                                Minimum="0" 
+                                                Maximum="10"/>
+                            <Slider Grid.Column="1"
+                                    Grid.Row="0"
+                                    Minimum="0" Maximum="10"
+                                    TickFrequency="1"
+                                    TickPlacement="BottomRight"
+                                    Value="{CompiledBinding DownscaleLevel}"
+                                    ToolTip.Tip="Downscale level"
+                                    PointerCaptureLost="PointerInputFinished" />
+                            <TextBlock Grid.Column="0"
+                                       Grid.Row="1"
+                                       Grid.ColumnSpan="2"
+                                       IsVisible="{CompiledBinding ShowDownscaleWarning}"
+                                       Classes="warning" 
+                                       TextWrapping="Wrap">
+                                Low value will have performance impact on large capture zones
+                            </TextBlock>
+                        </Grid>
                     </StackPanel>
+                </Expander>
 
-                    <StackPanel Grid.Row="1" Grid.Column="1">
-                        <Label>Y-offset</Label>
-                        <controls:NumberBox Margin="5 0 5 5"
-                                            Value="{CompiledBinding Y}"
-                                            attachedProperties:NumberBoxAssist.SuffixText="px"
-                                            HorizontalAlignment="Stretch"
-                                            Minimum="0"
-                                            Maximum="{CompiledBinding MaxY}"
-                                            AcceptsExpression="True"
-                                            ValidationMode="Disabled"
-                                            LostFocus="InputFinished" />
+                <!-- Black Bar Detection Section -->
+                <Expander Header="Black Bar Detection" IsExpanded="False" Margin="0 0 0 10">
+                    <StackPanel Margin="10">
+                        <Grid ColumnDefinitions="*,Auto" Margin="0 0 0 10">
+                            <Label Grid.Column="0" Content="Letterbox removal" Margin="0" />
+                            <avalonia:MaterialIcon Grid.Column="1"
+                                                   VerticalAlignment="Center"
+                                                   Kind="HelpCircle"
+                                                   ToolTip.Tip="Attempts to remove black borders (also known as letterboxing) from the image" />
+                        </Grid>
+
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox Content="Left" IsChecked="{CompiledBinding BlackBarDetectionLeft}" MinWidth="80" PointerCaptureLost="PointerInputFinished" />
+                            <CheckBox Content="Right" IsChecked="{CompiledBinding BlackBarDetectionRight}" MinWidth="80" PointerCaptureLost="PointerInputFinished" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox Content="Top" IsChecked="{CompiledBinding BlackBarDetectionTop}" MinWidth="80" PointerCaptureLost="PointerInputFinished" />
+                            <CheckBox Content="Bottom" IsChecked="{CompiledBinding BlackBarDetectionBottom}" MinWidth="80" PointerCaptureLost="PointerInputFinished" />
+                        </StackPanel>
+
+                        <Label Content="Detection threshold" Margin="0 10 0 0" />
+                        <Grid ColumnDefinitions="Auto,*">
+                            <controls:NumberBox Grid.Column="0" Value="{CompiledBinding BlackBarDetectionThreshold}" Margin="0 0 5 0" VerticalAlignment="Center" />
+                            <Slider Grid.Column="1"
+                                    Minimum="0" Maximum="50"
+                                    TickFrequency="2"
+                                    TickPlacement="BottomRight"
+                                    Value="{CompiledBinding BlackBarDetectionThreshold}"
+                                    ToolTip.Tip="Black-Bar detection threshold"
+                                    PointerCaptureLost="PointerInputFinished" />
+                        </Grid>
                     </StackPanel>
-                </Grid>
+                </Expander>
 
-                <Grid VerticalAlignment="Stretch" Margin="0" ColumnDefinitions="*,*">
-                    <StackPanel Grid.Row="0" Grid.Column="0">
-                        <Label>Width</Label>
-                        <controls:NumberBox Margin="5 0 5 5"
-                                            Value="{CompiledBinding Width}"
-                                            attachedProperties:NumberBoxAssist.SuffixText="px"
-                                            HorizontalAlignment="Stretch"
-                                            Minimum="1"
-                                            Maximum="{CompiledBinding MaxWidth}"
-                                            AcceptsExpression="True"
-                                            ValidationMode="Disabled"
-                                            LostFocus="InputFinished" />
+                <!-- Color Adjustments Section -->
+                <Expander Header="Color Adjustments" IsExpanded="False" Margin="0 0 0 10">
+                    <StackPanel Margin="10">
+                        <Grid ColumnDefinitions="*,Auto" Margin="0 0 0 10">
+                            <Label Grid.Column="0" Content="Image color controls" />
+                            <avalonia:MaterialIcon Grid.Column="1"
+                                                   VerticalAlignment="Center"
+                                                   Kind="HelpCircle"
+                                                   ToolTip.Tip="Adjust brightness, contrast, exposure, and saturation. Leave at default for no processing cost." />
+                        </Grid>
+
+                        <Grid ColumnDefinitions="*,Auto" Margin="0 10 0 0">
+                            <Label Grid.Column="0" Content="Brightness" />
+                            <Button Grid.Column="1"
+                                    Classes="AppBarButton icon-button"
+                                    ToolTip.Tip="Reset to default (0)"
+                                    Command="{CompiledBinding ResetBrightness}">
+                                <avalonia:MaterialIcon Kind="Restore" Width="16" Height="16" />
+                            </Button>
+                        </Grid>
+                        <Grid ColumnDefinitions="Auto,*">
+                            <controls:NumberBox Grid.Column="0" Value="{CompiledBinding Brightness}" Margin="0 0 5 0" VerticalAlignment="Center" Minimum="-100" Maximum="100" />
+                            <Slider Grid.Column="1"
+                                    Minimum="-100" Maximum="100"
+                                    TickFrequency="10"
+                                    TickPlacement="BottomRight"
+                                    Value="{CompiledBinding Brightness}"
+                                    ToolTip.Tip="Brightness adjustment (-100 = darker, 0 = unchanged, +100 = brighter)"
+                                    PointerCaptureLost="PointerInputFinished" />
+                        </Grid>
+
+                        <Grid ColumnDefinitions="*,Auto" Margin="0 10 0 0">
+                            <Label Grid.Column="0" Content="Contrast" />
+                            <Button Grid.Column="1"
+                                    Classes="AppBarButton icon-button"
+                                    ToolTip.Tip="Reset to default (100%)"
+                                    Command="{CompiledBinding ResetContrast}">
+                                <avalonia:MaterialIcon Kind="Restore" Width="16" Height="16" />
+                            </Button>
+                        </Grid>
+                        <Grid ColumnDefinitions="Auto,*">
+                            <controls:NumberBox Grid.Column="0" Value="{CompiledBinding Contrast}" Margin="0 0 5 0" VerticalAlignment="Center" Minimum="50" Maximum="200" />
+                            <Slider Grid.Column="1"
+                                    Minimum="50" Maximum="200"
+                                    TickFrequency="10"
+                                    TickPlacement="BottomRight"
+                                    Value="{CompiledBinding Contrast}"
+                                    ToolTip.Tip="Contrast percent (50 = low, 100 = unchanged, 200 = high)"
+                                    PointerCaptureLost="PointerInputFinished" />
+                        </Grid>
+
+                        <Grid ColumnDefinitions="*,Auto" Margin="0 10 0 0">
+                            <Label Grid.Column="0" Content="Exposure" />
+                            <Button Grid.Column="1"
+                                    Classes="AppBarButton icon-button"
+                                    ToolTip.Tip="Reset to default (100%)"
+                                    Command="{CompiledBinding ResetExposure}">
+                                <avalonia:MaterialIcon Kind="Restore" Width="16" Height="16" />
+                            </Button>
+                        </Grid>
+                        <Grid ColumnDefinitions="Auto,*">
+                            <controls:NumberBox Grid.Column="0" Value="{CompiledBinding Exposure}" Margin="0 0 5 0" VerticalAlignment="Center" Minimum="25" Maximum="400" />
+                            <Slider Grid.Column="1"
+                                    Minimum="25" Maximum="400"
+                                    TickFrequency="25"
+                                    TickPlacement="BottomRight"
+                                    Value="{CompiledBinding Exposure}"
+                                    ToolTip.Tip="Exposure percent (25 = dim, 100 = unchanged, 400 = very bright)"
+                                    PointerCaptureLost="PointerInputFinished" />
+                        </Grid>
+
+                        <Grid ColumnDefinitions="*,Auto" Margin="0 10 0 0">
+                            <Label Grid.Column="0" Content="Saturation" />
+                            <Button Grid.Column="1"
+                                    Classes="AppBarButton icon-button"
+                                    ToolTip.Tip="Reset to default (100%)"
+                                    Command="{CompiledBinding ResetSaturation}">
+                                <avalonia:MaterialIcon Kind="Restore" Width="16" Height="16" />
+                            </Button>
+                        </Grid>
+                        <Grid ColumnDefinitions="Auto,*">
+                            <controls:NumberBox Grid.Column="0" Value="{CompiledBinding Saturation}" Margin="0 0 5 0" VerticalAlignment="Center" Minimum="0" Maximum="200" />
+                            <Slider Grid.Column="1"
+                                    Minimum="0" Maximum="200"
+                                    TickFrequency="10"
+                                    TickPlacement="BottomRight"
+                                    Value="{CompiledBinding Saturation}"
+                                    ToolTip.Tip="Saturation percent (0 = grayscale, 100 = unchanged, 200 = vivid)"
+                                    PointerCaptureLost="PointerInputFinished" />
+                        </Grid>
+
+                        <CheckBox Content="Auto-Exposure" IsChecked="{CompiledBinding AutoExposure}" PointerCaptureLost="PointerInputFinished" Margin="0 10 0 0" />
+                        <TextBlock Classes="caption" TextWrapping="Wrap" Margin="0 5 0 0">
+                            Automatically adjusts exposure based on image brightness
+                        </TextBlock>
                     </StackPanel>
-                    <StackPanel Grid.Row="0" Grid.Column="1">
-                        <Label>Height</Label>
-                        <controls:NumberBox Margin="5 0 5 5"
-                                            Value="{CompiledBinding Height}"
-                                            attachedProperties:NumberBoxAssist.SuffixText="px"
-                                            HorizontalAlignment="Stretch"
-                                            Minimum="1"
-                                            Maximum="{CompiledBinding MaxHeight}"
-                                            AcceptsExpression="True"
-                                            ValidationMode="Disabled"
-                                            LostFocus="InputFinished" />
+                </Expander>
+
+                <!-- Smoothing & Performance Section -->
+                <Expander Header="Smoothing &amp; Performance" IsExpanded="False" Margin="0 0 0 10">
+                    <StackPanel Margin="10">
+                        <Grid ColumnDefinitions="*,Auto,Auto" Margin="0 0 0 10">
+                            <Label Grid.Column="0" Content="Smoothing Level" Margin="0" />
+                            <Button Grid.Column="1"
+                                    Classes="AppBarButton icon-button"
+                                    ToolTip.Tip="Reset to default (6)"
+                                    Command="{CompiledBinding ResetSmoothingLevel}"
+                                    Margin="0 0 5 0">
+                                <avalonia:MaterialIcon Kind="Restore" Width="16" Height="16" />
+                            </Button>
+                            <avalonia:MaterialIcon Grid.Column="2"
+                                                   VerticalAlignment="Center"
+                                                   Kind="HelpCircle"
+                                                   ToolTip.Tip="Controls color smoothing intensity. 0 = no smoothing, 10 = maximum smoothing" />
+                        </Grid>
+                        <Grid ColumnDefinitions="Auto,*">
+                            <controls:NumberBox Grid.Column="0" Value="{CompiledBinding SmoothingLevel}" Margin="0 0 5 0" VerticalAlignment="Center" Minimum="0" Maximum="10" SmallChange="1" LargeChange="1" />
+                            <Slider Grid.Column="1"
+                                    Minimum="0" Maximum="10"
+                                    TickFrequency="1"
+                                    TickPlacement="BottomRight"
+                                    Value="{CompiledBinding SmoothingLevel}"
+                                    ToolTip.Tip="Smoothing level (0 - 10)"
+                                    PointerCaptureLost="PointerInputFinished" />
+                        </Grid>
+                        <TextBlock Classes="caption" TextWrapping="Wrap" Margin="0 5 0 0">
+                            0 = No smoothing (instant, jittery), 10 = Maximum smoothing (very smooth, slower response)
+                        </TextBlock>
+
+                        <Grid ColumnDefinitions="*,Auto" Margin="0 10 0 0">
+                            <Label Grid.Column="0" Content="Frame Skip" />
+                            <Button Grid.Column="1"
+                                    Classes="AppBarButton icon-button"
+                                    ToolTip.Tip="Reset to default (0)"
+                                    Command="{CompiledBinding ResetFrameSkip}">
+                                <avalonia:MaterialIcon Kind="Restore" Width="16" Height="16" />
+                            </Button>
+                        </Grid>
+                        <Grid ColumnDefinitions="Auto,*">
+                            <controls:NumberBox Grid.Column="0" Value="{CompiledBinding FrameSkip}" Margin="0 0 5 0" VerticalAlignment="Center" Minimum="0" Maximum="10" />
+                            <Slider Grid.Column="1"
+                                    Minimum="0" Maximum="10"
+                                    TickFrequency="1"
+                                    TickPlacement="BottomRight"
+                                    Value="{CompiledBinding FrameSkip}"
+                                    ToolTip.Tip="Skip frames to reduce CPU usage"
+                                    PointerCaptureLost="PointerInputFinished" />
+                        </Grid>
+                        <TextBlock Classes="caption" TextWrapping="Wrap" Margin="0 5 0 0">
+                            0 = Process every frame, higher = skip more frames for lower CPU usage
+                        </TextBlock>
                     </StackPanel>
-                </Grid>
-
-                <Label Content="Adjustments" Margin="0 10 0 0" />
-                <CheckBox Content="Flip horizontally" IsChecked="{CompiledBinding FlipHorizontal}" PointerCaptureLost="PointerInputFinished" />
-                <CheckBox Content="Flip vertically" IsChecked="{CompiledBinding FlipVertical}" PointerCaptureLost="PointerInputFinished" />
-
-                <Label Content="Downscale level" Margin="0 10 0 0" />
-                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
-                    <controls:NumberBox Grid.Column="0"
-                                        Grid.Row="0"
-                                        Value="{CompiledBinding DownscaleLevel}"
-                                        Margin="0 0 5 0"
-                                        VerticalAlignment="Center"
-                                        Minimum="0" 
-                                        Maximum="10"/>
-                    <Slider Grid.Column="1"
-                            Grid.Row="0"
-                            Minimum="0" Maximum="10"
-                            TickFrequency="1"
-                            TickPlacement="BottomRight"
-                            Value="{CompiledBinding DownscaleLevel}"
-                            ToolTip.Tip="Downscale level"
-                            PointerCaptureLost="PointerInputFinished" />
-                    <TextBlock Grid.Column="0"
-                               Grid.Row="1"
-                               Grid.ColumnSpan="2"
-                               IsVisible="{CompiledBinding ShowDownscaleWarning}"
-                               Classes="warning" 
-                               TextWrapping="Wrap">
-                        Low value will have performance impact on large capture zones
-                    </TextBlock>
-                </Grid>
-
-                <Grid ColumnDefinitions="*,Auto" Margin="0 10 0 0">
-                    <Label Grid.Column="0" Content="Black-bar detection" Margin="0" />
-                    <avalonia:MaterialIcon Grid.Column="1"
-                                           VerticalAlignment="Center"
-                                           Kind="HelpCircle"
-                                           ToolTip.Tip="Attempts to remove black borders (also known as letterboxing) from the image" />
-                </Grid>
-
-                <StackPanel Orientation="Horizontal">
-                    <CheckBox Content="Left" IsChecked="{CompiledBinding BlackBarDetectionLeft}" MinWidth="80" PointerCaptureLost="PointerInputFinished" />
-                    <CheckBox Content="Right" IsChecked="{CompiledBinding BlackBarDetectionRight}" MinWidth="80" PointerCaptureLost="PointerInputFinished" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal">
-                    <CheckBox Content="Top" IsChecked="{CompiledBinding BlackBarDetectionTop}" MinWidth="80" PointerCaptureLost="PointerInputFinished" />
-                    <CheckBox Content="Bottom" IsChecked="{CompiledBinding BlackBarDetectionBottom}" MinWidth="80" PointerCaptureLost="PointerInputFinished" />
-                </StackPanel>
-
-                <Label Content="Detection threshold" Margin="0 10 0 0" />
-                <Grid ColumnDefinitions="Auto,*">
-                    <controls:NumberBox Grid.Column="0" Value="{CompiledBinding BlackBarDetectionThreshold}" Margin="0 0 5 0" VerticalAlignment="Center" />
-                    <Slider Grid.Column="1"
-                            Minimum="0" Maximum="50"
-                            TickFrequency="2"
-                            TickPlacement="BottomRight"
-                            Value="{CompiledBinding BlackBarDetectionThreshold}"
-                            ToolTip.Tip="Black-Bar detection threshold"
-                            PointerCaptureLost="PointerInputFinished" />
-                </Grid>
-
-                <Separator Margin="0 15 0 0" />
-
-                <Grid ColumnDefinitions="*,Auto" Margin="0 10 0 0">
-                    <Label Grid.Column="0" Content="Color Adjustments" />
-                    <avalonia:MaterialIcon Grid.Column="1"
-                                           VerticalAlignment="Center"
-                                           Kind="HelpCircle"
-                                           ToolTip.Tip="Adjust brightness, contrast, exposure, and saturation. Leave at default for no processing cost." />
-                </Grid>
-
-                <Grid ColumnDefinitions="*,Auto" Margin="0 10 0 0">
-                    <Label Grid.Column="0" Content="Brightness" />
-                    <Button Grid.Column="1"
-                            Classes="AppBarButton icon-button"
-                            ToolTip.Tip="Reset to default (0)"
-                            Command="{CompiledBinding ResetBrightness}">
-                        <avalonia:MaterialIcon Kind="Restore" Width="16" Height="16" />
-                    </Button>
-                </Grid>
-                <Grid ColumnDefinitions="Auto,*">
-                    <controls:NumberBox Grid.Column="0" Value="{CompiledBinding Brightness}" Margin="0 0 5 0" VerticalAlignment="Center" Minimum="-100" Maximum="100" />
-                    <Slider Grid.Column="1"
-                            Minimum="-100" Maximum="100"
-                            TickFrequency="10"
-                            TickPlacement="BottomRight"
-                            Value="{CompiledBinding Brightness}"
-                            ToolTip.Tip="Brightness adjustment (-100 = darker, 0 = unchanged, +100 = brighter)"
-                            PointerCaptureLost="PointerInputFinished" />
-                </Grid>
-
-                <Grid ColumnDefinitions="*,Auto" Margin="0 10 0 0">
-                    <Label Grid.Column="0" Content="Contrast" />
-                    <Button Grid.Column="1"
-                            Classes="AppBarButton icon-button"
-                            ToolTip.Tip="Reset to default (100%)"
-                            Command="{CompiledBinding ResetContrast}">
-                        <avalonia:MaterialIcon Kind="Restore" Width="16" Height="16" />
-                    </Button>
-                </Grid>
-                <Grid ColumnDefinitions="Auto,*">
-                    <controls:NumberBox Grid.Column="0" Value="{CompiledBinding Contrast}" Margin="0 0 5 0" VerticalAlignment="Center" Minimum="50" Maximum="200" />
-                    <Slider Grid.Column="1"
-                            Minimum="50" Maximum="200"
-                            TickFrequency="10"
-                            TickPlacement="BottomRight"
-                            Value="{CompiledBinding Contrast}"
-                            ToolTip.Tip="Contrast percent (50 = low, 100 = unchanged, 200 = high)"
-                            PointerCaptureLost="PointerInputFinished" />
-                </Grid>
-
-                <Grid ColumnDefinitions="*,Auto" Margin="0 10 0 0">
-                    <Label Grid.Column="0" Content="Exposure" />
-                    <Button Grid.Column="1"
-                            Classes="AppBarButton icon-button"
-                            ToolTip.Tip="Reset to default (100%)"
-                            Command="{CompiledBinding ResetExposure}">
-                        <avalonia:MaterialIcon Kind="Restore" Width="16" Height="16" />
-                    </Button>
-                </Grid>
-                <Grid ColumnDefinitions="Auto,*">
-                    <controls:NumberBox Grid.Column="0" Value="{CompiledBinding Exposure}" Margin="0 0 5 0" VerticalAlignment="Center" Minimum="25" Maximum="400" />
-                    <Slider Grid.Column="1"
-                            Minimum="25" Maximum="400"
-                            TickFrequency="25"
-                            TickPlacement="BottomRight"
-                            Value="{CompiledBinding Exposure}"
-                            ToolTip.Tip="Exposure percent (25 = dim, 100 = unchanged, 400 = very bright)"
-                            PointerCaptureLost="PointerInputFinished" />
-                </Grid>
-
-                <Grid ColumnDefinitions="*,Auto" Margin="0 10 0 0">
-                    <Label Grid.Column="0" Content="Saturation" />
-                    <Button Grid.Column="1"
-                            Classes="AppBarButton icon-button"
-                            ToolTip.Tip="Reset to default (100%)"
-                            Command="{CompiledBinding ResetSaturation}">
-                        <avalonia:MaterialIcon Kind="Restore" Width="16" Height="16" />
-                    </Button>
-                </Grid>
-                <Grid ColumnDefinitions="Auto,*">
-                    <controls:NumberBox Grid.Column="0" Value="{CompiledBinding Saturation}" Margin="0 0 5 0" VerticalAlignment="Center" Minimum="0" Maximum="200" />
-                    <Slider Grid.Column="1"
-                            Minimum="0" Maximum="200"
-                            TickFrequency="10"
-                            TickPlacement="BottomRight"
-                            Value="{CompiledBinding Saturation}"
-                            ToolTip.Tip="Saturation percent (0 = grayscale, 100 = unchanged, 200 = vivid)"
-                            PointerCaptureLost="PointerInputFinished" />
-                </Grid>
-
-                <CheckBox Content="Auto-Exposure" IsChecked="{CompiledBinding AutoExposure}" PointerCaptureLost="PointerInputFinished" Margin="0 10 0 0" />
-                <TextBlock Classes="caption" TextWrapping="Wrap" Margin="0 5 0 0">
-                    Automatically adjusts exposure based on image brightness
-                </TextBlock>
-
-                <Separator Margin="0 15 0 0" />
-
-                <Grid ColumnDefinitions="*,Auto,Auto" Margin="0 10 0 0">
-                    <Label Grid.Column="0" Content="Smoothing Level" Margin="0" />
-                    <Button Grid.Column="1"
-                            Classes="AppBarButton icon-button"
-                            ToolTip.Tip="Reset to default (6)"
-                            Command="{CompiledBinding ResetSmoothingLevel}"
-                            Margin="0 0 5 0">
-                        <avalonia:MaterialIcon Kind="Restore" Width="16" Height="16" />
-                    </Button>
-                    <avalonia:MaterialIcon Grid.Column="2"
-                                           VerticalAlignment="Center"
-                                           Kind="HelpCircle"
-                                           ToolTip.Tip="Controls color smoothing intensity. 0 = no smoothing, 10 = maximum smoothing" />
-                </Grid>
-                <Grid ColumnDefinitions="Auto,*">
-                    <controls:NumberBox Grid.Column="0" Value="{CompiledBinding SmoothingLevel}" Margin="0 0 5 0" VerticalAlignment="Center" Minimum="0" Maximum="10" SmallChange="1" LargeChange="1" />
-                    <Slider Grid.Column="1"
-                            Minimum="0" Maximum="10"
-                            TickFrequency="1"
-                            TickPlacement="BottomRight"
-                            Value="{CompiledBinding SmoothingLevel}"
-                            ToolTip.Tip="Smoothing level (0 - 10)"
-                            PointerCaptureLost="PointerInputFinished" />
-                </Grid>
-                <TextBlock Classes="caption" TextWrapping="Wrap" Margin="0 5 0 0">
-                    0 = No smoothing (instant, jittery), 10 = Maximum smoothing (very smooth, slower response)
-                </TextBlock>
-
-                <Grid ColumnDefinitions="*,Auto" Margin="0 10 0 0">
-                    <Label Grid.Column="0" Content="Frame Skip" />
-                    <Button Grid.Column="1"
-                            Classes="AppBarButton icon-button"
-                            ToolTip.Tip="Reset to default (0)"
-                            Command="{CompiledBinding ResetFrameSkip}">
-                        <avalonia:MaterialIcon Kind="Restore" Width="16" Height="16" />
-                    </Button>
-                </Grid>
-                <Grid ColumnDefinitions="Auto,*">
-                    <controls:NumberBox Grid.Column="0" Value="{CompiledBinding FrameSkip}" Margin="0 0 5 0" VerticalAlignment="Center" Minimum="0" Maximum="10" />
-                    <Slider Grid.Column="1"
-                            Minimum="0" Maximum="10"
-                            TickFrequency="1"
-                            TickPlacement="BottomRight"
-                            Value="{CompiledBinding FrameSkip}"
-                            ToolTip.Tip="Skip frames to reduce CPU usage"
-                            PointerCaptureLost="PointerInputFinished" />
-                </Grid>
-                <TextBlock Classes="caption" TextWrapping="Wrap" Margin="0 5 0 0">
-                    0 = Process every frame, higher = skip more frames for lower CPU usage
-                </TextBlock>
+                </Expander>
             </StackPanel>
             </ScrollViewer>
         </Border>

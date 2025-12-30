@@ -20,7 +20,7 @@ An enhanced Artemis RGB plugin based on the official Ambilight layer brush, addi
 
 --OR--
 
-1. Install Ambilight Smoothed - Plugin from the Artemis workshop
+1. Install Ambilight Smoothed from the Artemis workshop
 2. Install the Ambilight Smoothed - Profile from the Artemis Workshop
 
 ## Configuration
