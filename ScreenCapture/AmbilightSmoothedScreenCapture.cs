@@ -34,7 +34,7 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed.ScreenCapture
             this._screenCapture = screenCapture;
 
             if (screenCapture is DX11ScreenCapture dx11ScreenCapture)
-                dx11ScreenCapture.Timeout = 100;
+                dx11ScreenCapture.Timeout = 250;
         }
 
         #endregion
@@ -48,6 +48,11 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed.ScreenCapture
                 _cancellationToken.ThrowIfCancellationRequested();
                 bool success = _screenCapture.CaptureScreen();
                 Updated?.Invoke(this, new ScreenCaptureUpdatedEventArgs(success));
+                
+                // Adaptive backoff: be polite to GPU under load
+                // On success: 1ms sleep (allows ~1000 FPS theoretical max)
+                // On failure: 16ms sleep (~60 FPS retry rate when GPU is busy)
+                Thread.Sleep(success ? 1 : 16);
             }
         }
 

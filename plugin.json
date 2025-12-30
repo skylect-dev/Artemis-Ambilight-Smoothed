@@ -4,7 +4,7 @@
   "Name": "Ambilight Smoothed",
   "Icon": "icon.png",
   "Description": "Ambilight plugin based on the original Ambilight plugin, featuring enhanced color smoothing to minimize jitter. Includes color adjustment options directly within the plugin settings for improved user experience.",
-  "Version": "1.1.0.0",
+  "Version": "1.2.0.0",
   "Main": "Artemis.Plugins.LayerBrushes.AmbilightSmoothed.dll",
   "Platforms": "Windows,Linux"
 }

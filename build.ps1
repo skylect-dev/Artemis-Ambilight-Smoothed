@@ -48,6 +48,7 @@ if (Test-Path $zipFile) {
 }
 
 # Create the zip file
+Add-Type -AssemblyName System.IO.Compression.FileSystem
 [System.IO.Compression.ZipFile]::CreateFromDirectory($tempDir, $zipFile, [System.IO.Compression.CompressionLevel]::Optimal, $false)
 
 # Clean up temp directory
