@@ -3,7 +3,7 @@
   "MinimumVersion": "1.2025.1222.3",
   "Name": "Ambilight Smoothed",
   "Icon": "MonitorMultiple",
-  "Description": "Screen-Capturing with color smoothing, brightness/contrast/exposure/saturation controls, and auto-exposure for perfect Ambilight reproduction.",
+  "Description": "Ambilight plugin based on the original Ambilight plugin, featuring enhanced color smoothing to minimize jitter. Includes color adjustment options directly within the plugin settings for improved user experience.",
   "Version": "1.1.0.0",
   "Main": "Artemis.Plugins.LayerBrushes.AmbilightSmoothed.dll",
   "Platforms": "Windows,Linux"
