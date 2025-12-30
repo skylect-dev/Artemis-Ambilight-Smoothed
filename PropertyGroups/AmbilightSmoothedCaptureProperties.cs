@@ -25,13 +25,12 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed.PropertyGroups
         public BoolLayerProperty BlackBarDetectionRight { get; set; }
         public IntLayerProperty BlackBarDetectionThreshold { get; set; }
 
-        // HDR compensation (for washed out HDR captures)
-        public BoolLayerProperty Hdr { get; set; }
-        public BoolLayerProperty HdrAuto { get; set; }
-        public IntLayerProperty HdrExposure { get; set; }
-        public IntLayerProperty HdrBlackPoint { get; set; }
-        public IntLayerProperty HdrWhitePoint { get; set; }
-        public IntLayerProperty HdrSaturation { get; set; }
+        // Color adjustments (always available)
+        public IntLayerProperty Brightness { get; set; }
+        public IntLayerProperty Contrast { get; set; }
+        public IntLayerProperty Exposure { get; set; }
+        public IntLayerProperty Saturation { get; set; }
+        public BoolLayerProperty AutoExposure { get; set; }
 
         // Smoothing properties
         public IntLayerProperty SmoothingLevel { get; set; }
@@ -41,13 +40,12 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed.PropertyGroups
         {
             DownscaleLevel.DefaultValue = 6;
 
-            // HDR compensation defaults
-            Hdr.DefaultValue = false;
-            HdrAuto.DefaultValue = true;
-            HdrExposure.DefaultValue = 110;  // Exposure percent (bias when Auto is enabled)
-            HdrBlackPoint.DefaultValue = 0;   // Output floor
-            HdrWhitePoint.DefaultValue = 255; // Output ceiling
-            HdrSaturation.DefaultValue = 110; // Saturation percent (100 = unchanged)
+            // Color adjustment defaults (neutral = no processing cost)
+            Brightness.DefaultValue = 0;      // -100 to +100
+            Contrast.DefaultValue = 100;      // 50 to 200%
+            Exposure.DefaultValue = 100;      // 25 to 400%
+            Saturation.DefaultValue = 100;    // 0 to 200%
+            AutoExposure.DefaultValue = false;
 
             SmoothingLevel.DefaultValue = 6;  // 0-10, higher = smoother but more lag
             FrameSkip.DefaultValue = 0;  // 0 = process every frame

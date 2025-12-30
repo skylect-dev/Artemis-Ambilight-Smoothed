@@ -1,40 +1,56 @@
 # Ambilight Smoothed
 
-An enhanced Artemis RGB plugin based on the official Ambilight layer brush, adding smooth color transitions and HDR compensation for screen capture.
+An enhanced Artemis RGB plugin based on the official Ambilight layer brush, adding smooth color transitions and flexible color adjustment controls for perfect screen capture reproduction.
 
 ## Features
 
-- **Smooth Color Transitions** - Adjustable smoothing (0-10) eliminates LED color jitter
-- **Frame Skip** - Configurable frame skip to reduce CPU usage
-- **HDR Compensation** - Black point, white point, and saturation adjustments to fix washed-out HDR captures
+- **Smooth Color Transitions** - Adjustable smoothing (0-10) eliminates LED color jitter and flickering
+- **Frame Skip** - Configurable frame skip (0-10) to reduce CPU usage
+- **Color Adjustments** - Brightness, contrast, exposure, and saturation controls for any capture scenario
+- **Auto-Exposure** - Intelligent exposure adjustment based on image analysis
+- **Black Bar Detection** - Automatic letterbox removal with configurable threshold
 - **Real-time Preview** - All adjustments reflect immediately in the preview window
+- **Zero-Cost Neutral** - No performance impact when all adjustments are at default values
 
 ## Installation
 
-1. Download the latest `AmbilightSmoothed-HDR.zip` from releases
+1. Download `AmbilightSmoothed.zip`
 2. In Artemis, go to Settings → Plugins → Import Plugin
 3. Select the downloaded ZIP file
 
+--OR--
+
+1. Install Ambilight Smoothed - Plugin from the Artemis workshop
+2. Install the Ambilight Smoothed - Profile from the Artemis Workshop
+
 ## Configuration
 
+### Capture Settings
+- **Source Region**: Define screen capture area with X/Y offset and width/height
+- **Downscale Level** (0-10): Higher values improve performance (default: 6)
+- **Flip Horizontal/Vertical**: Mirror the captured image
+- **Black Bar Detection**: Automatically crop letterbox bars (top/bottom/left/right)
+- **Detection Threshold** (0-50): How dark pixels must be to be considered black bars
+
+### Color Adjustments
+- **Brightness** (-100 to +100): Simple offset adjustment. 0 = unchanged (default)
+- **Contrast** (50-200%): Expand or compress tonal range. 100 = unchanged (default)
+- **Exposure** (25-400%): Tone curve adjustment with highlight rolloff. 100 = unchanged (default)
+  - Use 25-99% to dim over-bright captures
+  - Use 101-400% to brighten under-exposed captures
+- **Saturation** (0-200%): Color intensity. 0 = grayscale, 100 = unchanged (default), 200 = vivid
+- **Auto-Exposure**: Automatically adjusts exposure based on image brightness (checkbox)
+  - Analyzes 95th/99.5th percentile to avoid clipped highlights
+  - Exposure slider acts as maximum when enabled
+
 ### Smoothing Settings
-- **Smoothing Level** (0-10): Higher values create smoother color transitions. 0 = no smoothing, 10 = maximum smoothing
-- **Frame Skip** (0-10): Skip frames to reduce CPU usage. 0 = process every frame
-
-### HDR Settings
-- **HDR Toggle**: Enable HDR compensation for washed-out HDR screen captures
-- **Black Point** (0-255): Raises dark values to reduce washout (default: 30)
-- **White Point** (0-255): Compresses bright values (default: 235)
-- **Saturation** (0-200%): Boosts color intensity (default: 120%)
-
-## Building from Source
-
-```powershell
-cd f:\ArtemisPlugins\AmbilightSmoothed
-dotnet build -c Release
-```
-
-The compiled plugin will be in `bin\Release\net10.0-windows\`
+- **Smoothing Level** (0-10): Higher values create smoother color transitions
+  - 0 = no smoothing (instant, may be jittery)
+  - 6 = default (good balance)
+  - 10 = maximum smoothing (very smooth, slower response)
+- **Frame Skip** (0-10): Skip frames to reduce CPU usage
+  - 0 = process every frame (default)
+  - Higher values reduce CPU load but update less frequently
 
 ## Credits
 

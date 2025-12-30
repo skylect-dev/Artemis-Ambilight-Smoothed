@@ -24,16 +24,16 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
     private readonly bool _blackBarDetectionLeft;
     private readonly bool _blackBarDetectionRight;
     
-    private readonly bool _hdr;
-    private readonly bool _hdrAuto;
-    private readonly int _hdrExposure;
-    private readonly int _hdrBlackPoint;
-    private readonly int _hdrWhitePoint;
-    private readonly int _hdrSaturation;
-    private byte[]? _hdrLut;
-    private int _hdrLastBuiltExposure;
-    private int _hdrLastBuiltBlackPoint;
-    private int _hdrLastBuiltWhitePoint;
+    private readonly int _brightness;
+    private readonly int _contrast;
+    private readonly int _exposure;
+    private readonly int _saturation;
+    private readonly bool _autoExposure;
+    private byte[]? _colorLut;
+    private int _lastBuiltBrightness;
+    private int _lastBuiltContrast;
+    private int _lastBuiltExposure;
+    private int _lastBuiltSaturation;
 
     public Display Display { get; }
 
@@ -66,12 +66,11 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
         _blackBarDetectionLeft = properties.BlackBarDetectionLeft;
         _blackBarDetectionRight = properties.BlackBarDetectionRight;
         
-        _hdr = properties.Hdr;
-        _hdrAuto = properties.HdrAuto;
-        _hdrExposure = properties.HdrExposure;
-        _hdrBlackPoint = properties.HdrBlackPoint;
-        _hdrWhitePoint = properties.HdrWhitePoint;
-        _hdrSaturation = properties.HdrSaturation;
+        _brightness = properties.Brightness;
+        _contrast = properties.Contrast;
+        _exposure = properties.Exposure;
+        _saturation = properties.Saturation;
+        _autoExposure = properties.AutoExposure;
 
         _captureZone = AmbilightSmoothedBootstrapper.ScreenCaptureService!.GetScreenCapture(display).RegisterCaptureZone(0, 0, display.Width, display.Height);
         Preview = new WriteableBitmap(new PixelSize(_captureZone.Width, _captureZone.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
@@ -121,8 +120,9 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
                     if ((ProcessedPreview == null) || (Math.Abs(ProcessedPreview.Size.Width - croppedImage.Width) > 0.001) || (Math.Abs(ProcessedPreview.Size.Height - croppedImage.Height) > 0.001))
                         ProcessedPreview = new WriteableBitmap(new PixelSize(croppedImage.Width, croppedImage.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
 
-                    if (_hdr)
-                        WritePixelsWithHdr(ProcessedPreview, croppedImage);
+                    bool hasColorAdjustments = _brightness != 0 || _contrast != 100 || _exposure != 100 || _saturation != 100 || _autoExposure;
+                    if (hasColorAdjustments)
+                        WritePixelsWithColorAdjustments(ProcessedPreview, croppedImage);
                     else
                         WritePixels(ProcessedPreview, croppedImage);
                 }
@@ -132,83 +132,86 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
                     if ((ProcessedPreview == null) || (Math.Abs(ProcessedPreview.Size.Width - processedImage.Width) > 0.001) || (Math.Abs(ProcessedPreview.Size.Height - processedImage.Height) > 0.001))
                         ProcessedPreview = new WriteableBitmap(new PixelSize(processedImage.Width, processedImage.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
 
-                    if (_hdr)
-                        WritePixelsWithHdr(ProcessedPreview, processedImage);
+                    bool hasColorAdjustments = _brightness != 0 || _contrast != 100 || _exposure != 100 || _saturation != 100 || _autoExposure;
+                    if (hasColorAdjustments)
+                        WritePixelsWithColorAdjustments(ProcessedPreview, processedImage);
                     else
                         WritePixels(ProcessedPreview, processedImage);
                 }
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            // Log exception but don't crash - previews will freeze but continue trying on next update
-            System.Diagnostics.Debug.WriteLine($"DisplayPreview.Update exception: {ex.Message}");
+            // Silently catch exceptions to prevent crashes - preview will freeze but continue trying on next update
         }
     }
 
-    private void EnsureHdrLut(int exposurePercent, int blackPoint, int whitePoint)
+    private void EnsureColorLut(int brightness, int contrast, int exposurePercent, int saturation)
     {
-        blackPoint = Math.Clamp(blackPoint, 0, 255);
-        whitePoint = Math.Clamp(whitePoint, 0, 255);
-        if (whitePoint <= blackPoint)
-            whitePoint = Math.Min(255, blackPoint + 1);
+        brightness = Math.Clamp(brightness, -100, 100);
+        contrast = Math.Clamp(contrast, 50, 200);
+        exposurePercent = Math.Clamp(exposurePercent, 25, 400);
 
-        exposurePercent = Math.Clamp(exposurePercent, 1, 400);
-
-        if (_hdrLut != null &&
-            _hdrLastBuiltExposure == exposurePercent &&
-            _hdrLastBuiltBlackPoint == blackPoint &&
-            _hdrLastBuiltWhitePoint == whitePoint)
+        if (_colorLut != null &&
+            _lastBuiltBrightness == brightness &&
+            _lastBuiltContrast == contrast &&
+            _lastBuiltExposure == exposurePercent &&
+            _lastBuiltSaturation == saturation)
             return;
 
-        _hdrLut = new byte[256];
-        // Filmic/ACES-like curve with exposure; black/white clamp output (floor/ceiling)
+        _colorLut = new byte[256];
+        
+        // Apply adjustments in order: brightness → contrast → exposure (with filmic curve)
+        float brightnessOffset = brightness / 255f;
+        float contrastFactor = contrast / 100f;
         float exposure = exposurePercent / 100f;
-        float minOut = blackPoint / 255f;
-        float maxOut = whitePoint / 255f;
         const float a = 2.51f, b = 0.03f, c = 2.43f, d = 0.59f, e = 0.14f;
 
         for (int i = 0; i < 256; i++)
         {
-            float x = (i / 255f) * exposure;
+            float x = i / 255f;
+            x += brightnessOffset;
+            x = Math.Clamp(x, 0f, 1f);
+            x = (x - 0.5f) * contrastFactor + 0.5f;
+            x = Math.Clamp(x, 0f, 1f);
+            x *= exposure;
             float numerator = x * (a * x + b);
             float denominator = x * (c * x + d) + e;
             float y = denominator != 0f ? numerator / denominator : 0f;
             y = Math.Clamp(y, 0f, 1f);
-            y = Math.Clamp(y, minOut, maxOut);
 
-            _hdrLut[i] = (byte)Math.Clamp((int)(y * 255f + 0.5f), 0, 255);
+            _colorLut[i] = (byte)Math.Clamp((int)(y * 255f + 0.5f), 0, 255);
         }
 
-        _hdrLastBuiltExposure = exposurePercent;
-        _hdrLastBuiltBlackPoint = blackPoint;
-        _hdrLastBuiltWhitePoint = whitePoint;
+        _lastBuiltBrightness = brightness;
+        _lastBuiltContrast = contrast;
+        _lastBuiltExposure = exposurePercent;
+        _lastBuiltSaturation = saturation;
     }
 
-    private unsafe void WritePixelsWithHdr(WriteableBitmap preview, RefImage<ColorBGRA> image)
+    private unsafe void WritePixelsWithColorAdjustments(WriteableBitmap preview, RefImage<ColorBGRA> image)
     {
         using ILockedFramebuffer framebuffer = preview.Lock();
         
         fixed (byte* src = image)
         {
-            int effectiveExposure = _hdrExposure;
-            if (_hdrAuto)
+            int effectiveExposure = _exposure;
+            if (_autoExposure)
             {
-                int autoExposure = ComputeAutoExposurePercent(src, image.Width, image.Height, image.RawStride, _hdrBlackPoint, _hdrWhitePoint);
-                float bias = _hdrExposure / 100f;
-                effectiveExposure = (int)MathF.Round(autoExposure * bias);
-                effectiveExposure = Math.Clamp(effectiveExposure, 1, 400);
+                // Auto-exposure computes optimal value; use exposure slider as max clamp
+                int autoExposureValue = ComputeAutoExposurePercent(src, image.Width, image.Height, image.RawStride);
+                effectiveExposure = Math.Clamp(autoExposureValue, 25, _exposure);
             }
 
-            EnsureHdrLut(effectiveExposure, _hdrBlackPoint, _hdrWhitePoint);
-            if (_hdrLut == null)
+            EnsureColorLut(_brightness, _contrast, effectiveExposure, _saturation);
+            if (_colorLut == null)
                 return;
 
-            fixed (byte* lutPtr = _hdrLut)
+            fixed (byte* lutPtr = _colorLut)
             {
             byte* dst = (byte*)framebuffer.Address;
-            int sat = Math.Clamp(_hdrSaturation, 0, 400);
-            int rowBytes = image.Width * 4; // Actual pixel data per row
+            int sat = Math.Clamp(_saturation, 0, 200);
+            int rowBytes = image.Width * 4;
             
             for (int y = 0; y < image.Height; y++)
             {
@@ -243,7 +246,7 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
         }
     }
 
-    private static unsafe int ComputeAutoExposurePercent(byte* src, int width, int height, int stride, int blackPoint, int whitePoint)
+    private static unsafe int ComputeAutoExposurePercent(byte* src, int width, int height, int stride)
     {
         if (width <= 0 || height <= 0)
             return 100;
@@ -278,15 +281,14 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
         if (refLuma <= 0)
             refLuma = 1;
 
-        float maxOut = Math.Clamp(whitePoint, 0, 255) / 255f;
-        float desired = MathF.Min(0.96f, MathF.Max(0.10f, maxOut - 0.01f));
+        float desired = 0.96f;
 
         float lo = 0.25f;
         float hi = 4.0f;
         for (int iter = 0; iter < 10; iter++)
         {
             float mid = (lo + hi) * 0.5f;
-            float y = EvaluateFilmic(refLuma, mid, blackPoint, whitePoint);
+            float y = EvaluateFilmic(refLuma, mid);
             if (y < desired)
                 lo = mid;
             else
@@ -294,24 +296,17 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
         }
 
         int result = (int)MathF.Round(((lo + hi) * 0.5f) * 100f);
-        return Math.Clamp(result, 1, 400);
+        return Math.Clamp(result, 25, 400);
     }
 
-    private static float EvaluateFilmic(int inputByte, float exposure, int blackPoint, int whitePoint)
+    private static float EvaluateFilmic(int inputByte, float exposure)
     {
         float x = (Math.Clamp(inputByte, 0, 255) / 255f) * exposure;
         const float a = 2.51f, b = 0.03f, c = 2.43f, d = 0.59f, e = 0.14f;
         float numerator = x * (a * x + b);
         float denominator = x * (c * x + d) + e;
         float y = denominator != 0f ? numerator / denominator : 0f;
-        y = Math.Clamp(y, 0f, 1f);
-
-        float minOut = Math.Clamp(blackPoint, 0, 255) / 255f;
-        float maxOut = Math.Clamp(whitePoint, 0, 255) / 255f;
-        if (maxOut <= minOut)
-            maxOut = MathF.Min(1f, minOut + (1f / 255f));
-        y = Math.Clamp(y, minOut, maxOut);
-        return y;
+        return Math.Clamp(y, 0f, 1f);
     }
 
     private static int GetPercentileFromHistogram(Span<int> hist, int total, float percentile)

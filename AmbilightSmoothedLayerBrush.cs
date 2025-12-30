@@ -27,14 +27,14 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed
         private int _lastWidth;
         private int _lastHeight;
 
-        // HDR compensation state (applied on downscaled capture)
-        private byte[]? _hdrAdjustedPixels;
-        private byte[]? _hdrLut;
-        private int _hdrLastBlackPoint;
-        private int _hdrLastWhitePoint;
-        private int _hdrLastSaturation;
-        private int _hdrLastExposure;
-        private bool _hdrLastAutoEnabled;
+        // Color adjustment state (applied on downscaled capture)
+        private byte[]? _colorAdjustedPixels;
+        private byte[]? _colorLut;
+        private int _lastBrightness;
+        private int _lastContrast;
+        private int _lastExposure;
+        private int _lastSaturation;
+        private bool _lastAutoExposure;
 
         #endregion
 
@@ -52,12 +52,11 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed
             AmbilightSmoothedCaptureProperties properties = Properties.Capture;
             int smoothingLevel = properties.SmoothingLevel.CurrentValue;
             int frameSkip = properties.FrameSkip.CurrentValue;
-            bool hdrEnabled = properties.Hdr.CurrentValue;
-            bool hdrAuto = properties.HdrAuto.CurrentValue;
-            int hdrExposure = properties.HdrExposure.CurrentValue;
-            int hdrBlackPoint = properties.HdrBlackPoint.CurrentValue;
-            int hdrWhitePoint = properties.HdrWhitePoint.CurrentValue;
-            int hdrSaturation = properties.HdrSaturation.CurrentValue;
+            int brightness = properties.Brightness.CurrentValue;
+            int contrast = properties.Contrast.CurrentValue;
+            int exposure = properties.Exposure.CurrentValue;
+            int saturation = properties.Saturation.CurrentValue;
+            bool autoExposure = properties.AutoExposure.CurrentValue;
             
             // Convert smoothing level (0-10) to factor (1.0-0.0) with quadratic curve for better distribution
             // 0 = 1.0 (no smoothing), 5 = 0.25 (moderate), 10 = 0.0 (max smoothing)
@@ -81,53 +80,56 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed
                 if (shouldProcess)
                     _frameCounter = 0;
 
-                // Force reprocessing if HDR settings changed (for live preview updates)
-                bool hdrSettingsChanged = hdrEnabled && 
-                    (_hdrLastBlackPoint != hdrBlackPoint || 
-                     _hdrLastWhitePoint != hdrWhitePoint || 
-                     _hdrLastSaturation != hdrSaturation ||
-                     _hdrLastExposure != hdrExposure ||
-                     _hdrLastAutoEnabled != hdrAuto);
-                if (hdrSettingsChanged)
+                // Check if any color adjustments are non-neutral
+                bool hasColorAdjustments = brightness != 0 || contrast != 100 || exposure != 100 || saturation != 100 || autoExposure;
+
+                // Force reprocessing if color settings changed (for live preview updates)
+                bool colorSettingsChanged = hasColorAdjustments && 
+                    (_lastBrightness != brightness || 
+                     _lastContrast != contrast || 
+                     _lastExposure != exposure ||
+                     _lastSaturation != saturation ||
+                     _lastAutoExposure != autoExposure);
+                if (colorSettingsChanged)
                     shouldProcess = true;
 
                 fixed (byte* img = image)
                 {
                     byte* sourcePixels = img;
 
-                    // Apply HDR compensation (levels + saturation) into a reusable buffer.
+                    // Apply color adjustments (brightness, contrast, exposure, saturation) into a reusable buffer.
                     // We only recompute when shouldProcess=true, so FrameSkip reduces CPU cost.
                     // But we MUST recompute if dimensions changed (e.g., black bar detection).
+                    // Skip entirely if all settings are neutral (zero cost optimization).
                     bool dimensionsChanged = (image.Width != _lastWidth || image.Height != _lastHeight);
                     
-                    if (hdrEnabled)
+                    if (hasColorAdjustments)
                     {
                         if (shouldProcess || dimensionsChanged)
                         {
-                            int effectiveExposure = hdrExposure;
-                            if (hdrAuto)
+                            int effectiveExposure = exposure;
+                            if (autoExposure)
                             {
-                                int autoExposure = ComputeAutoExposurePercent(img, image.Width, image.Height, image.RawStride, hdrBlackPoint, hdrWhitePoint);
-                                float bias = hdrExposure / 100f;
-                                effectiveExposure = (int)MathF.Round(autoExposure * bias);
-                                effectiveExposure = Math.Clamp(effectiveExposure, 1, 400);
+                                // Auto-exposure computes optimal value; use exposure slider as max clamp
+                                int autoExposureValue = ComputeAutoExposurePercent(img, image.Width, image.Height, image.RawStride);
+                                effectiveExposure = Math.Clamp(autoExposureValue, 25, exposure);
                             }
 
-                            EnsureHdrLut(effectiveExposure, hdrBlackPoint, hdrWhitePoint, hdrSaturation);
-                            EnsureHdrBuffer(image.Width, image.Height, image.RawStride);
-                            fixed (byte* hdrPtr = _hdrAdjustedPixels)
+                            EnsureColorLut(brightness, contrast, effectiveExposure, saturation);
+                            EnsureColorBuffer(image.Width, image.Height, image.RawStride);
+                            fixed (byte* colorPtr = _colorAdjustedPixels)
                             {
-                                ApplyHdrCompensation(img, hdrPtr, image.Width, image.Height, image.RawStride, _hdrLut!, hdrSaturation);
-                                sourcePixels = hdrPtr;
+                                ApplyColorAdjustments(img, colorPtr, image.Width, image.Height, image.RawStride, _colorLut!, saturation);
+                                sourcePixels = colorPtr;
                             }
 
-                            _hdrLastAutoEnabled = hdrAuto;
+                            _lastAutoExposure = autoExposure;
                         }
-                        else if (_hdrAdjustedPixels != null)
+                        else if (_colorAdjustedPixels != null)
                         {
-                            fixed (byte* hdrPtr = _hdrAdjustedPixels)
+                            fixed (byte* colorPtr = _colorAdjustedPixels)
                             {
-                                sourcePixels = hdrPtr;
+                                sourcePixels = colorPtr;
                             }
                         }
                     }
@@ -163,58 +165,68 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed
             }
         }
 
-        private void EnsureHdrBuffer(int width, int height, int stride)
+        private void EnsureColorBuffer(int width, int height, int stride)
         {
             int bufferSize = height * stride;
-            if (_hdrAdjustedPixels == null || _hdrAdjustedPixels.Length != bufferSize)
-                _hdrAdjustedPixels = new byte[bufferSize];
+            if (_colorAdjustedPixels == null || _colorAdjustedPixels.Length != bufferSize)
+                _colorAdjustedPixels = new byte[bufferSize];
         }
 
-        private void EnsureHdrLut(int exposurePercent, int blackPoint, int whitePoint, int saturation)
+        private void EnsureColorLut(int brightness, int contrast, int exposurePercent, int saturation)
         {
-            blackPoint = Math.Clamp(blackPoint, 0, 255);
-            whitePoint = Math.Clamp(whitePoint, 0, 255);
-            if (whitePoint <= blackPoint)
-                whitePoint = Math.Min(255, blackPoint + 1);
+            brightness = Math.Clamp(brightness, -100, 100);
+            contrast = Math.Clamp(contrast, 50, 200);
+            exposurePercent = Math.Clamp(exposurePercent, 25, 400);
 
-            exposurePercent = Math.Clamp(exposurePercent, 1, 400);
-
-            if (_hdrLut != null &&
-                _hdrLastExposure == exposurePercent &&
-                _hdrLastBlackPoint == blackPoint &&
-                _hdrLastWhitePoint == whitePoint &&
-                _hdrLastSaturation == saturation)
+            if (_colorLut != null &&
+                _lastBrightness == brightness &&
+                _lastContrast == contrast &&
+                _lastExposure == exposurePercent &&
+                _lastSaturation == saturation)
                 return;
 
-            _hdrLut = new byte[256];
-            // Filmic/ACES-like curve with exposure; black/white clamp output (floor/ceiling)
-            float exposure = exposurePercent / 100f;
-            float minOut = blackPoint / 255f;
-            float maxOut = whitePoint / 255f;
+            _colorLut = new byte[256];
+            
+            // Apply adjustments in order: brightness → contrast → exposure (with filmic curve)
+            float brightnessOffset = brightness / 255f;  // -100 to +100 → -0.39 to +0.39
+            float contrastFactor = contrast / 100f;      // 50 to 200% → 0.5 to 2.0
+            float exposure = exposurePercent / 100f;      // 25 to 400% → 0.25 to 4.0
+            
+            // Filmic/ACES-like curve constants
             const float a = 2.51f, b = 0.03f, c = 2.43f, d = 0.59f, e = 0.14f;
 
             for (int i = 0; i < 256; i++)
             {
-                float x = (i / 255f) * exposure;
+                float x = i / 255f;
+                
+                // 1. Apply brightness (simple offset)
+                x += brightnessOffset;
+                x = Math.Clamp(x, 0f, 1f);
+                
+                // 2. Apply contrast (expand/compress around midpoint)
+                x = (x - 0.5f) * contrastFactor + 0.5f;
+                x = Math.Clamp(x, 0f, 1f);
+                
+                // 3. Apply exposure with filmic curve (prevents harsh clipping)
+                x *= exposure;
                 float numerator = x * (a * x + b);
                 float denominator = x * (c * x + d) + e;
                 float y = denominator != 0f ? numerator / denominator : 0f;
                 y = Math.Clamp(y, 0f, 1f);
-                y = Math.Clamp(y, minOut, maxOut);
 
-                _hdrLut[i] = (byte)Math.Clamp((int)(y * 255f + 0.5f), 0, 255);
+                _colorLut[i] = (byte)Math.Clamp((int)(y * 255f + 0.5f), 0, 255);
             }
 
-            _hdrLastExposure = exposurePercent;
-            _hdrLastBlackPoint = blackPoint;
-            _hdrLastWhitePoint = whitePoint;
-            _hdrLastSaturation = saturation;
+            _lastBrightness = brightness;
+            _lastContrast = contrast;
+            _lastExposure = exposurePercent;
+            _lastSaturation = saturation;
         }
 
-        private static unsafe void ApplyHdrCompensation(byte* src, byte* dst, int width, int height, int stride, byte[] lut, int saturation)
+        private static unsafe void ApplyColorAdjustments(byte* src, byte* dst, int width, int height, int stride, byte[] lut, int saturation)
         {
-            // saturation: percent (100 = unchanged)
-            int sat = Math.Clamp(saturation, 0, 400);
+            // saturation: percent (100 = unchanged, 0 = grayscale, 200 = vivid)
+            int sat = Math.Clamp(saturation, 0, 200);
 
             fixed (byte* lutPtr = lut)
             {
@@ -251,10 +263,10 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed
             }
         }
 
-        private static unsafe int ComputeAutoExposurePercent(byte* src, int width, int height, int stride, int blackPoint, int whitePoint)
+        private static unsafe int ComputeAutoExposurePercent(byte* src, int width, int height, int stride)
         {
             // Goal: choose an exposure so a high percentile (bright-but-not-clipped) maps near the top
-            // of the output range using the existing filmic curve.
+            // of the output range using the filmic curve, without needing black/white point clamping.
 
             if (width <= 0 || height <= 0)
                 return 100;
@@ -289,17 +301,16 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed
             if (refLuma <= 0)
                 refLuma = 1;
 
-            float maxOut = Math.Clamp(whitePoint, 0, 255) / 255f;
-            // Aim just below the ceiling so highlights roll off rather than clip.
-            float desired = MathF.Min(0.96f, MathF.Max(0.10f, maxOut - 0.01f));
+            // Aim for highlights just below max output (0.96) so the filmic curve rolls off smoothly
+            float desired = 0.96f;
 
-            // Binary search exposure in [0.25 .. 4.0] (matches LUT clamp up to 400%).
+            // Binary search exposure in [0.25 .. 4.0] (matches LUT clamp 25-400%)
             float lo = 0.25f;
             float hi = 4.0f;
             for (int iter = 0; iter < 10; iter++)
             {
                 float mid = (lo + hi) * 0.5f;
-                float y = EvaluateFilmic(refLuma, mid, blackPoint, whitePoint);
+                float y = EvaluateFilmic(refLuma, mid);
                 if (y < desired)
                     lo = mid;
                 else
@@ -307,24 +318,17 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed
             }
 
             int result = (int)MathF.Round(((lo + hi) * 0.5f) * 100f);
-            return Math.Clamp(result, 1, 400);
+            return Math.Clamp(result, 25, 400);
         }
 
-        private static float EvaluateFilmic(int inputByte, float exposure, int blackPoint, int whitePoint)
+        private static float EvaluateFilmic(int inputByte, float exposure)
         {
             float x = (Math.Clamp(inputByte, 0, 255) / 255f) * exposure;
             const float a = 2.51f, b = 0.03f, c = 2.43f, d = 0.59f, e = 0.14f;
             float numerator = x * (a * x + b);
             float denominator = x * (c * x + d) + e;
             float y = denominator != 0f ? numerator / denominator : 0f;
-            y = Math.Clamp(y, 0f, 1f);
-
-            float minOut = Math.Clamp(blackPoint, 0, 255) / 255f;
-            float maxOut = Math.Clamp(whitePoint, 0, 255) / 255f;
-            if (maxOut <= minOut)
-                maxOut = MathF.Min(1f, minOut + (1f / 255f));
-            y = Math.Clamp(y, minOut, maxOut);
-            return y;
+            return Math.Clamp(y, 0f, 1f);
         }
 
         private static int GetPercentileFromHistogram(Span<int> hist, int total, float percentile)
@@ -439,8 +443,8 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed
         {
             RemoveCaptureZone();
             _smoothedPixels = null;
-            _hdrAdjustedPixels = null;
-            _hdrLut = null;
+            _colorAdjustedPixels = null;
+            _colorLut = null;
         }
 
         #endregion

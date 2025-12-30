@@ -32,12 +32,11 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
     private bool _blackBarDetectionRight;
     private int _blackBarDetectionThreshold;
     private bool _blackBarDetectionTop;
-    private bool _hdr;
-    private bool _hdrAuto;
-    private int _hdrExposure;
-    private int _hdrBlackPoint;
-    private int _hdrSaturation;
-    private int _hdrWhitePoint;
+    private int _brightness;
+    private int _contrast;
+    private int _exposure;
+    private int _saturation;
+    private bool _autoExposure;
     private int _smoothingLevel;
     private int _frameSkip;
 
@@ -62,10 +61,10 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
         AmbilightSmoothedLayerBrush = layerBrush;
         CaptureScreens = new ObservableCollection<CaptureScreenViewModel>();
         ResetRegion = ReactiveCommand.Create(ExecuteResetRegion);
-        ResetHdrExposure = ReactiveCommand.Create(ExecuteResetHdrExposure);
-        ResetHdrBlackPoint = ReactiveCommand.Create(ExecuteResetHdrBlackPoint);
-        ResetHdrWhitePoint = ReactiveCommand.Create(ExecuteResetHdrWhitePoint);
-        ResetHdrSaturation = ReactiveCommand.Create(ExecuteResetHdrSaturation);
+        ResetBrightness = ReactiveCommand.Create(ExecuteResetBrightness);
+        ResetContrast = ReactiveCommand.Create(ExecuteResetContrast);
+        ResetExposure = ReactiveCommand.Create(ExecuteResetExposure);
+        ResetSaturation = ReactiveCommand.Create(ExecuteResetSaturation);
         ResetSmoothingLevel = ReactiveCommand.Create(ExecuteResetSmoothingLevel);
         ResetFrameSkip = ReactiveCommand.Create(ExecuteResetFrameSkip);
 
@@ -114,10 +113,10 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
     }
 
     public ReactiveCommand<Unit, Unit> ResetRegion { get; }
-    public ReactiveCommand<Unit, Unit> ResetHdrExposure { get; }
-    public ReactiveCommand<Unit, Unit> ResetHdrBlackPoint { get; }
-    public ReactiveCommand<Unit, Unit> ResetHdrWhitePoint { get; }
-    public ReactiveCommand<Unit, Unit> ResetHdrSaturation { get; }
+    public ReactiveCommand<Unit, Unit> ResetBrightness { get; }
+    public ReactiveCommand<Unit, Unit> ResetContrast { get; }
+    public ReactiveCommand<Unit, Unit> ResetExposure { get; }
+    public ReactiveCommand<Unit, Unit> ResetSaturation { get; }
     public ReactiveCommand<Unit, Unit> ResetSmoothingLevel { get; }
     public ReactiveCommand<Unit, Unit> ResetFrameSkip { get; }
 
@@ -169,42 +168,6 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
         set => RaiseAndSetIfChanged(ref _blackBarDetectionTop, value);
     }
 
-    public bool Hdr
-    {
-        get => _hdr;
-        set => RaiseAndSetIfChanged(ref _hdr, value);
-    }
-
-    public bool HdrAuto
-    {
-        get => _hdrAuto;
-        set => RaiseAndSetIfChanged(ref _hdrAuto, value);
-    }
-
-    public int HdrExposure
-    {
-        get => _hdrExposure;
-        set => RaiseAndSetIfChanged(ref _hdrExposure, value);
-    }
-
-    public int HdrBlackPoint
-    {
-        get => _hdrBlackPoint;
-        set => RaiseAndSetIfChanged(ref _hdrBlackPoint, value);
-    }
-
-    public int HdrWhitePoint
-    {
-        get => _hdrWhitePoint;
-        set => RaiseAndSetIfChanged(ref _hdrWhitePoint, value);
-    }
-
-    public int HdrSaturation
-    {
-        get => _hdrSaturation;
-        set => RaiseAndSetIfChanged(ref _hdrSaturation, value);
-    }
-
     public bool BlackBarDetectionBottom
     {
         get => _blackBarDetectionBottom;
@@ -227,6 +190,36 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
     {
         get => _blackBarDetectionThreshold;
         set => RaiseAndSetIfChanged(ref _blackBarDetectionThreshold, value);
+    }
+
+    public int Brightness
+    {
+        get => _brightness;
+        set => RaiseAndSetIfChanged(ref _brightness, value);
+    }
+
+    public int Contrast
+    {
+        get => _contrast;
+        set => RaiseAndSetIfChanged(ref _contrast, value);
+    }
+
+    public int Exposure
+    {
+        get => _exposure;
+        set => RaiseAndSetIfChanged(ref _exposure, value);
+    }
+
+    public int Saturation
+    {
+        get => _saturation;
+        set => RaiseAndSetIfChanged(ref _saturation, value);
+    }
+
+    public bool AutoExposure
+    {
+        get => _autoExposure;
+        set => RaiseAndSetIfChanged(ref _autoExposure, value);
     }
 
     public int SmoothingLevel
@@ -266,12 +259,11 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
         BlackBarDetectionRight = _properties.BlackBarDetectionRight;
         BlackBarDetectionThreshold = _properties.BlackBarDetectionThreshold;
 
-        Hdr = _properties.Hdr;
-        HdrAuto = _properties.HdrAuto;
-        HdrExposure = _properties.HdrExposure;
-        HdrBlackPoint = _properties.HdrBlackPoint;
-        HdrWhitePoint = _properties.HdrWhitePoint;
-        HdrSaturation = _properties.HdrSaturation;
+        Brightness = _properties.Brightness;
+        Contrast = _properties.Contrast;
+        Exposure = _properties.Exposure;
+        Saturation = _properties.Saturation;
+        AutoExposure = _properties.AutoExposure;
 
         SmoothingLevel = _properties.SmoothingLevel;
         FrameSkip = _properties.FrameSkip;
@@ -302,12 +294,11 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
         _properties.BlackBarDetectionRight.SetCurrentValue(BlackBarDetectionRight);
         _properties.BlackBarDetectionThreshold.SetCurrentValue(BlackBarDetectionThreshold);
 
-        _properties.Hdr.SetCurrentValue(Hdr);
-        _properties.HdrAuto.SetCurrentValue(HdrAuto);
-        _properties.HdrExposure.SetCurrentValue(HdrExposure);
-        _properties.HdrBlackPoint.SetCurrentValue(HdrBlackPoint);
-        _properties.HdrWhitePoint.SetCurrentValue(HdrWhitePoint);
-        _properties.HdrSaturation.SetCurrentValue(HdrSaturation);
+        _properties.Brightness.SetCurrentValue(Brightness);
+        _properties.Contrast.SetCurrentValue(Contrast);
+        _properties.Exposure.SetCurrentValue(Exposure);
+        _properties.Saturation.SetCurrentValue(Saturation);
+        _properties.AutoExposure.SetCurrentValue(AutoExposure);
 
         _properties.SmoothingLevel.SetCurrentValue(SmoothingLevel);
         _properties.FrameSkip.SetCurrentValue(FrameSkip);
@@ -389,27 +380,27 @@ public class CapturePropertiesViewModel : BrushConfigurationViewModel
         Save();
     }
 
-    private void ExecuteResetHdrExposure()
+    private void ExecuteResetBrightness()
     {
-        HdrExposure = 110;
+        Brightness = 0;
         Save();
     }
 
-    private void ExecuteResetHdrBlackPoint()
+    private void ExecuteResetContrast()
     {
-        HdrBlackPoint = 0;
+        Contrast = 100;
         Save();
     }
 
-    private void ExecuteResetHdrWhitePoint()
+    private void ExecuteResetExposure()
     {
-        HdrWhitePoint = 255;
+        Exposure = 100;
         Save();
     }
 
-    private void ExecuteResetHdrSaturation()
+    private void ExecuteResetSaturation()
     {
-        HdrSaturation = 110;
+        Saturation = 100;
         Save();
     }
 

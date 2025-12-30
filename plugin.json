@@ -3,8 +3,8 @@
   "MinimumVersion": "1.2025.1222.3",
   "Name": "Ambilight Smoothed",
   "Icon": "MonitorMultiple",
-  "Description": "Screen-Capturing with color smoothing to reduce jitter and provide smooth LED transitions.",
-  "Version": "1.0.0.0",
+  "Description": "Screen-Capturing with color smoothing, brightness/contrast/exposure/saturation controls, and auto-exposure for perfect Ambilight reproduction.",
+  "Version": "1.1.0.0",
   "Main": "Artemis.Plugins.LayerBrushes.AmbilightSmoothed.dll",
   "Platforms": "Windows,Linux"
 }
