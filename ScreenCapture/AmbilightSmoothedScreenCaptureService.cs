@@ -10,10 +10,10 @@ namespace Artemis.Plugins.LayerBrushes.AmbilightSmoothed.ScreenCapture
 
         private readonly IScreenCaptureService _screenCaptureService;
 
-        private readonly Dictionary<Display, IScreenCapture> _screenCaptures = [];
+        private readonly Dictionary<Display, IScreenCapture> _screenCaptures = new Dictionary<Display, IScreenCapture>();
 
         private readonly List<GraphicsCard> _graphicsCards;
-        private readonly Dictionary<GraphicsCard, List<Display>> _displays = [];
+        private readonly Dictionary<GraphicsCard, List<Display>> _displays = new Dictionary<GraphicsCard, List<Display>>();
 
         #endregion
 

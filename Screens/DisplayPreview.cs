@@ -15,7 +15,7 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
 
     private bool _isDisposed;
 
-    private readonly ICaptureZone _captureZone;
+    private readonly ICaptureZone? _captureZone;
     private readonly ICaptureZone? _processedCaptureZone;
 
     private readonly int _blackBarThreshold;
@@ -54,8 +54,17 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
     {
         Display = display;
 
-        _captureZone = AmbilightSmoothedBootstrapper.ScreenCaptureService!.GetScreenCapture(display).RegisterCaptureZone(0, 0, display.Width, display.Height, highQuality ? 0 : 2);
-        Preview = new WriteableBitmap(new PixelSize(_captureZone.Width, _captureZone.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
+        var scs = AmbilightSmoothedBootstrapper.ScreenCaptureService;
+        if (scs != null)
+        {
+            _captureZone = scs.GetScreenCapture(display).RegisterCaptureZone(0, 0, display.Width, display.Height, highQuality ? 0 : 2);
+            Preview = new WriteableBitmap(new PixelSize(_captureZone.Width, _captureZone.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
+        }
+        else
+        {
+            _captureZone = null;
+            Preview = new WriteableBitmap(new PixelSize(1, 1), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
+        }
     }
 
     public DisplayPreview(Display display, AmbilightSmoothedCaptureProperties properties)
@@ -72,8 +81,17 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
         _saturation = properties.Saturation;
         _autoExposure = properties.AutoExposure;
 
-        _captureZone = AmbilightSmoothedBootstrapper.ScreenCaptureService!.GetScreenCapture(display).RegisterCaptureZone(0, 0, display.Width, display.Height);
-        Preview = new WriteableBitmap(new PixelSize(_captureZone.Width, _captureZone.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
+        var scs = AmbilightSmoothedBootstrapper.ScreenCaptureService;
+        if (scs != null)
+        {
+            _captureZone = scs.GetScreenCapture(display).RegisterCaptureZone(0, 0, display.Width, display.Height);
+            Preview = new WriteableBitmap(new PixelSize(_captureZone.Width, _captureZone.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
+        }
+        else
+        {
+            _captureZone = null;
+            Preview = new WriteableBitmap(new PixelSize(1, 1), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
+        }
 
         if (((properties.X + properties.Width) <= display.Width) && ((properties.Y + properties.Height) <= display.Height))
         {
@@ -97,8 +115,11 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
         {
             // DarthAffe 11.09.2023: Accessing the low-level images is a source of potential errors in the future since we assume the pixel-format. Currently both used providers are BGRA, but if there are ever issues with shifted colors, this is the place to start investigating.
 
-            using (_captureZone.Lock())
-                WritePixels(Preview, _captureZone.GetRefImage<ColorBGRA>());
+            if (_captureZone != null)
+            {
+                using (_captureZone.Lock())
+                    WritePixels(Preview, _captureZone.GetRefImage<ColorBGRA>());
+            }
 
             if (_processedCaptureZone == null)
                 return;
@@ -330,7 +351,9 @@ public sealed class DisplayPreview : ReactiveObject, IDisposable
 
     public void Dispose()
     {
-        AmbilightSmoothedBootstrapper.ScreenCaptureService!.GetScreenCapture(Display).UnregisterCaptureZone(_captureZone);
+        var scs = AmbilightSmoothedBootstrapper.ScreenCaptureService;
+        if (_captureZone != null && scs != null)
+            scs.GetScreenCapture(Display).UnregisterCaptureZone(_captureZone);
         _isDisposed = true;
     }
 
