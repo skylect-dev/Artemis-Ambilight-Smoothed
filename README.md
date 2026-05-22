@@ -1,3 +1,5 @@
+## AN UPDATE IS COMING SOON.
+
 # Ambilight Smoothed
 
 An enhanced Artemis RGB plugin based on the official Ambilight layer brush, adding smooth color transitions and flexible color adjustment controls for perfect screen capture reproduction.
